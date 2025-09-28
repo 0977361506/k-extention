@@ -1,0 +1,409 @@
+/* K-Tool Content Script Styles */
+
+/* Root container */
+#ktool-root {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    pointer-events: none !important;
+    z-index: 999999 !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+#ktool-root * {
+    pointer-events: auto !important;
+}
+
+/* Bubble Button */
+.ktool-bubble {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 3px solid rgba(255, 255, 255, 0.9);
+    z-index: 1000000;
+}
+
+.ktool-bubble:hover {
+    transform: scale(1.1) translateY(-2px);
+    box-shadow: 0 12px 40px rgba(102, 126, 234, 0.6);
+}
+
+.ktool-bubble:active {
+    transform: scale(0.98);
+}
+
+.ktool-bubble-icon {
+    font-size: 24px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.ktool-bubble.disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.ktool-bubble.disabled:hover {
+    transform: none;
+    box-shadow: 0 8px 25px rgba(108, 117, 125, 0.4);
+}
+
+/* Tooltip */
+.ktool-tooltip {
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    margin-bottom: 10px;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s;
+    pointer-events: none;
+}
+
+.ktool-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    right: 20px;
+    border: 5px solid transparent;
+    border-top-color: rgba(0, 0, 0, 0.9);
+}
+
+.ktool-bubble:hover .ktool-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(-5px);
+}
+
+/* Modal Overlay */
+.ktool-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s;
+}
+
+.ktool-modal-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Modal Content */
+.ktool-modal {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+    width: 90vw;
+    max-width: 1200px;
+    height: 85vh;
+    max-height: 800px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: scale(0.9) translateY(20px);
+    transition: all 0.3s;
+}
+
+.ktool-modal-overlay.show .ktool-modal {
+    transform: scale(1) translateY(0);
+}
+
+/* Modal Header */
+.ktool-modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ktool-modal-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.ktool-modal-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.ktool-modal-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Modal Body */
+.ktool-modal-body {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Tabs */
+.ktool-tabs {
+    display: flex;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.ktool-tab {
+    padding: 12px 20px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #6c757d;
+    transition: all 0.3s;
+    border-bottom: 2px solid transparent;
+}
+
+.ktool-tab:hover {
+    color: #495057;
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.ktool-tab.active {
+    color: #667eea;
+    border-bottom-color: #667eea;
+    background: white;
+}
+
+/* Tab Content */
+.ktool-tab-content {
+    flex: 1;
+    overflow: hidden;
+    display: none;
+}
+
+.ktool-tab-content.active {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Form Styles */
+.ktool-form {
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.ktool-form-group {
+    margin-bottom: 20px;
+}
+
+.ktool-form-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 6px;
+}
+
+.ktool-form-input,
+.ktool-form-textarea,
+.ktool-form-select {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    font-family: inherit;
+}
+
+.ktool-form-input:focus,
+.ktool-form-textarea:focus,
+.ktool-form-select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.ktool-form-textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* Button Styles */
+.ktool-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ktool-btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.ktool-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+.ktool-btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.ktool-btn-secondary:hover {
+    background: #5a6268;
+}
+
+.ktool-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Progress Indicator */
+.ktool-progress {
+    padding: 20px;
+    background: #f8f9fa;
+}
+
+.ktool-progress-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+}
+
+.ktool-progress-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.ktool-progress-step.pending .ktool-progress-icon {
+    background: #e9ecef;
+    color: #6c757d;
+}
+
+.ktool-progress-step.active .ktool-progress-icon {
+    background: #667eea;
+    color: white;
+}
+
+.ktool-progress-step.completed .ktool-progress-icon {
+    background: #28a745;
+    color: white;
+}
+
+.ktool-progress-step.error .ktool-progress-icon {
+    background: #dc3545;
+    color: white;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .ktool-bubble {
+        bottom: 20px;
+        right: 20px;
+        width: 56px;
+        height: 56px;
+    }
+    
+    .ktool-bubble-icon {
+        font-size: 20px;
+    }
+    
+    .ktool-modal {
+        width: 95vw;
+        height: 90vh;
+        margin: 10px;
+    }
+    
+    .ktool-tabs {
+        overflow-x: auto;
+    }
+    
+    .ktool-tab {
+        white-space: nowrap;
+        min-width: 120px;
+    }
+}
+
+/* Animations */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.ktool-spinning {
+    animation: spin 1s linear infinite;
+}
+
+/* Custom Scrollbar */
+.ktool-form::-webkit-scrollbar,
+.ktool-tab-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.ktool-form::-webkit-scrollbar-track,
+.ktool-tab-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.ktool-form::-webkit-scrollbar-thumb,
+.ktool-tab-content::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.ktool-form::-webkit-scrollbar-thumb:hover,
+.ktool-tab-content::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}

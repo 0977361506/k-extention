@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>K-Tool Settings</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="popup-container">
+      <!-- Header -->
+      <div class="header">
+        <div class="header-content">
+          <img src="assets/icon.png" alt="K-Tool" class="logo" />
+          <h1 class="title">K-Tool Document</h1>
+          <div class="status-indicator">
+            <span class="status-text" id="statusText">Tắt</span>
+            <label class="switch">
+              <input type="checkbox" id="enabledSwitch" />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Save Status -->
+      <div class="save-status" id="saveStatus" style="display: none">
+        <div class="save-icon" id="saveIcon">💾</div>
+        <span class="save-text" id="saveText">Đang lưu...</span>
+      </div>
+
+      <!-- Form -->
+      <form class="settings-form" id="settingsForm">
+        <!-- API Key -->
+        <div class="form-group">
+          <label for="apiKey" class="form-label">
+            <span class="label-icon">🔑</span>
+            API Key *
+          </label>
+          <input
+            type="password"
+            id="apiKey"
+            class="form-input"
+            placeholder="Nhập API key của bạn"
+            required
+          />
+          <div class="error-message" id="apiKeyError"></div>
+        </div>
+
+        <!-- Model Selection -->
+        <div class="form-group">
+          <label for="selectedModel" class="form-label">
+            <span class="label-icon">🤖</span>
+            AI Model *
+          </label>
+          <select id="selectedModel" class="form-select" required>
+            <option value="sonar-pro">Perplexity - Sonar Pro</option>
+            <option value="gemini">Google - Gemini 2.0 Flash</option>
+          </select>
+          <div class="error-message" id="selectedModelError"></div>
+        </div>
+
+        <!-- URL Template -->
+        <div class="form-group">
+          <label for="urlTemplate" class="form-label">
+            <span class="label-icon">🔗</span>
+            URL Template *
+          </label>
+          <input
+            type="url"
+            id="urlTemplate"
+            class="form-input"
+            placeholder="https://example.com/template/{pageId}"
+            required
+          />
+          <div class="help-text">
+            Link tài liệu template của dự án (phải chứa {pageId})
+          </div>
+          <div class="error-message" id="urlTemplateError"></div>
+        </div>
+
+        <!-- Document URL -->
+        <div class="form-group">
+          <label for="documentUrl" class="form-label">
+            <span class="label-icon">📄</span>
+            URL Tài liệu *
+          </label>
+          <input
+            type="url"
+            id="documentUrl"
+            class="form-input"
+            placeholder="https://confluence.com/folder/documents"
+            required
+          />
+          <div class="help-text">
+            URL folder bạn đặt tài liệu chi tiết khi AI trả lời
+          </div>
+          <div class="error-message" id="documentUrlError"></div>
+        </div>
+
+        <!-- Database URL -->
+        <div class="form-group">
+          <label for="databaseUrl" class="form-label">
+            <span class="label-icon">🗄️</span>
+            URL Database *
+          </label>
+          <input
+            type="url"
+            id="databaseUrl"
+            class="form-input"
+            placeholder="https://confluence.com/folder/database"
+            required
+          />
+          <div class="help-text">Thư mục tài liệu các bảng trong database</div>
+          <div class="error-message" id="databaseUrlError"></div>
+        </div>
+
+        <!-- Instruction URL -->
+        <div class="form-group">
+          <label for="instructionUrl" class="form-label">
+            <span class="label-icon">📋</span>
+            URL Instructions
+          </label>
+          <input
+            type="url"
+            id="instructionUrl"
+            class="form-input"
+            placeholder="https://confluence.com/instructions"
+          />
+          <div class="help-text">
+            Bổ sung thêm tài liệu hệ thống để AI hiểu rõ hơn
+          </div>
+          <div class="error-message" id="instructionUrlError"></div>
+        </div>
+
+        <!-- Custom Prompt -->
+        <div class="form-group">
+          <label for="customPrompt" class="form-label">
+            <span class="label-icon">🧠</span>
+            Custom Prompt AI *
+          </label>
+          <textarea
+            id="customPrompt"
+            class="form-textarea"
+            rows="4"
+            placeholder="Nhập prompt tùy chỉnh cho AI..."
+            required
+          ></textarea>
+          <div class="help-text">
+            <span>Prompt này sẽ được sử dụng làm ngữ cảnh cho AI</span>
+            <span class="char-count" id="charCount">0 ký tự</span>
+          </div>
+          <div class="error-message" id="customPromptError"></div>
+        </div>
+      </form>
+
+      <!-- Footer -->
+      <div class="footer">
+        <div class="version">K-Tool Document v2.0 - Auto Save</div>
+        <button type="button" class="reset-btn" id="resetBtn">Reset</button>
+      </div>
+    </div>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

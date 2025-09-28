@@ -1,0 +1,272 @@
+/* K-Tool Extension Popup Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+}
+
+.popup-container {
+    width: 480px;
+    max-height: 600px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+.header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+}
+
+.title {
+    font-size: 18px;
+    font-weight: 600;
+    flex: 1;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-text {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* Switch */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.3);
+    transition: 0.3s;
+    border-radius: 24px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: #4CAF50;
+}
+
+input:checked + .slider:before {
+    transform: translateX(20px);
+}
+
+/* Save Status */
+.save-status {
+    background: #f8f9fa;
+    padding: 12px 20px;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.save-status.saving {
+    color: #007bff;
+}
+
+.save-status.saved {
+    color: #28a745;
+}
+
+.save-status.error {
+    color: #dc3545;
+}
+
+.save-icon {
+    font-size: 16px;
+}
+
+/* Form */
+.settings-form {
+    padding: 20px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 6px;
+}
+
+.label-icon {
+    font-size: 16px;
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    font-family: inherit;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-input.error,
+.form-select.error,
+.form-textarea.error {
+    border-color: #dc3545;
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.help-text {
+    font-size: 12px;
+    color: #6c757d;
+    margin-top: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.char-count {
+    font-weight: 500;
+    color: #495057;
+}
+
+.error-message {
+    color: #dc3545;
+    font-size: 12px;
+    margin-top: 4px;
+    display: none;
+}
+
+.error-message.show {
+    display: block;
+}
+
+/* Footer */
+.footer {
+    padding: 16px 20px;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.version {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.reset-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.reset-btn:hover {
+    background: #5a6268;
+}
+
+/* Animations */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.save-icon.spinning {
+    animation: spin 1s linear infinite;
+}
+
+/* Scrollbar */
+.settings-form::-webkit-scrollbar {
+    width: 6px;
+}
+
+.settings-form::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.settings-form::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.settings-form::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
