@@ -12,6 +12,10 @@ class ConfluenceEditor {
     this.previewContainer = null;
     this.isPreviewMode = false;
     this.autoSaveTimer = null;
+    this.isModified = false;
+    // Zoom controls
+    this.currentZoom = 1;
+    this.dragOffset = { x: 0, y: 0 };
   }
 
   openEditor(content, options = {}) {
@@ -47,7 +51,7 @@ class ConfluenceEditor {
           </h2>
           <div class="confluence-editor-actions">
             <button class="editor-btn editor-btn-primary" id="editor-save-btn">
-              � Lưu thay đổi
+              💾 Lưu thay đổi
             </button>
             <button class="editor-btn editor-btn-secondary" id="editor-close-btn">
               ✕ Đóng
@@ -112,6 +116,12 @@ class ConfluenceEditor {
               <div class="mermaid-preview-pane">
                 <div class="mermaid-editor-header">
                   📊 Diagram Preview
+                  <div class="mermaid-zoom-controls">
+                    <button class="zoom-btn" id="zoom-out" title="Zoom Out">−</button>
+                    <div class="zoom-level" id="zoom-level">100%</div>
+                    <button class="zoom-btn" id="zoom-in" title="Zoom In">+</button>
+                    <button class="zoom-btn" id="zoom-reset" title="Reset Zoom">⌂</button>
+                  </div>
                 </div>
                 <div class="mermaid-editor-body">
                   <div class="mermaid-preview" id="mermaid-preview">
@@ -211,6 +221,28 @@ class ConfluenceEditor {
       aiPromptInput.addEventListener("keypress", (e) => {
         if (e.key === "Enter") this.sendAIPrompt();
       });
+    }
+
+    // Zoom controls
+    const zoomInBtn = this.editorContainer.querySelector("#zoom-in");
+    const zoomOutBtn = this.editorContainer.querySelector("#zoom-out");
+    const zoomResetBtn = this.editorContainer.querySelector("#zoom-reset");
+
+    if (zoomInBtn) {
+      zoomInBtn.addEventListener("click", () => this.zoomIn());
+    }
+    if (zoomOutBtn) {
+      zoomOutBtn.addEventListener("click", () => this.zoomOut());
+    }
+    if (zoomResetBtn) {
+      zoomResetBtn.addEventListener("click", () => this.resetZoom());
+    }
+
+    // Add wheel zoom to mermaid preview
+    const mermaidPreview =
+      this.editorContainer.querySelector("#mermaid-preview");
+    if (mermaidPreview) {
+      mermaidPreview.addEventListener("wheel", (e) => this.handleWheel(e));
     }
 
     // Close on overlay click
@@ -417,6 +449,14 @@ class ConfluenceEditor {
     // Update current content
     if (this.currentContent) {
       this.currentContent.full_storage_format = content;
+      // Mark as modified if content changed
+      if (
+        this.originalContent &&
+        content !== this.originalContent.full_storage_format
+      ) {
+        this.isModified = true;
+        this.updateSaveButtonState();
+      }
     }
 
     // Render preview (similar to existing preview logic)
@@ -765,6 +805,7 @@ class ConfluenceEditor {
           this.updateMermaidPreview();
           // Mark as modified
           this.isModified = true;
+          this.updateSaveButtonState();
           console.log(`📝 Updated diagram ${this.currentSelectedDiagramId}`);
         }
       };
@@ -817,6 +858,10 @@ class ConfluenceEditor {
     // Initialize mermaid rendering
     if (window.mermaid) {
       window.mermaid.init(undefined, preview.querySelector(".mermaid"));
+      // Apply current zoom after rendering
+      setTimeout(() => {
+        this.updateZoom();
+      }, 100);
     }
   }
 
@@ -1000,6 +1045,10 @@ class ConfluenceEditor {
         this.onSave(this.currentContent);
       }
 
+      // Reset modified state and update button
+      this.isModified = false;
+      this.updateSaveButtonState();
+
       this.updateStatus("Đã lưu thay đổi");
       console.log("✅ Changes saved successfully");
 
@@ -1062,6 +1111,66 @@ class ConfluenceEditor {
     return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
+  // Update save button state based on modifications
+  updateSaveButtonState() {
+    const saveBtn = this.editorContainer.querySelector("#editor-save-btn");
+    if (!saveBtn) return;
+
+    if (this.isModified) {
+      saveBtn.innerHTML = "💾 Lưu thay đổi *";
+      saveBtn.style.background = "#28a745";
+      saveBtn.title = "Có thay đổi chưa lưu";
+    } else {
+      saveBtn.innerHTML = "💾 Lưu thay đổi";
+      saveBtn.style.background = "#007bff";
+      saveBtn.title = "Lưu thay đổi";
+    }
+  }
+
+  // Zoom controls methods
+  zoomIn() {
+    this.currentZoom = Math.min(this.currentZoom * 1.2, 3);
+    this.updateZoom();
+  }
+
+  zoomOut() {
+    this.currentZoom = Math.max(this.currentZoom / 1.2, 0.3);
+    this.updateZoom();
+  }
+
+  resetZoom() {
+    this.currentZoom = 1;
+    this.dragOffset = { x: 0, y: 0 };
+    this.updateZoom();
+  }
+
+  updateZoom() {
+    const preview = this.editorContainer.querySelector("#mermaid-preview");
+    const zoomLevel = this.editorContainer.querySelector("#zoom-level");
+
+    if (preview) {
+      const mermaidContent = preview.querySelector(".mermaid, svg");
+      if (mermaidContent) {
+        mermaidContent.style.transform = `scale(${this.currentZoom}) translate(${this.dragOffset.x}px, ${this.dragOffset.y}px)`;
+        mermaidContent.style.transformOrigin = "center center";
+        mermaidContent.style.transition = "transform 0.2s ease";
+      }
+    }
+
+    if (zoomLevel) {
+      zoomLevel.textContent = `${Math.round(this.currentZoom * 100)}%`;
+    }
+  }
+
+  handleWheel(e) {
+    e.preventDefault();
+    if (e.deltaY < 0) {
+      this.zoomIn();
+    } else {
+      this.zoomOut();
+    }
+  }
+
   closeEditor() {
     if (this.editorContainer) {
       this.editorContainer.remove();
@@ -1072,6 +1181,11 @@ class ConfluenceEditor {
     this.currentContent = null;
     this.originalContent = null;
     this.mermaidDiagrams = [];
+    this.isModified = false;
+
+    // Reset zoom state
+    this.currentZoom = 1;
+    this.dragOffset = { x: 0, y: 0 };
 
     console.log("📝 Confluence Editor closed");
   }
