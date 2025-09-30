@@ -2,6 +2,7 @@
 import { ApiClient, ConfluenceApi } from "../shared/api.js";
 import { PROGRESS_STEPS } from "../shared/constants.js";
 import { StorageManager } from "../shared/storage.js";
+import { ConfluenceEditor } from "./confluenceEditor.js";
 
 class KToolContent {
   constructor() {
@@ -10,6 +11,7 @@ class KToolContent {
     this.currentTab = "generate";
     this.generationJob = null;
     this.progressSteps = [...PROGRESS_STEPS];
+    this.confluenceEditor = null;
     this.init();
   }
 
@@ -30,6 +32,19 @@ class KToolContent {
 
     // Bind events
     this.bindEvents();
+
+    // Initialize Confluence Editor
+    try {
+      console.log("🔧 Initializing ConfluenceEditor...");
+      this.confluenceEditor = new ConfluenceEditor();
+      console.log("✅ ConfluenceEditor initialized:", this.confluenceEditor);
+    } catch (error) {
+      console.error("❌ Error initializing ConfluenceEditor:", error);
+      this.confluenceEditor = null;
+    }
+
+    // Make available globally for debugging
+    window.ktoolContent = this;
 
     console.log("✅ K-Tool Content Script ready");
   }
@@ -541,6 +556,9 @@ class KToolContent {
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
           <h3 style="margin: 0;">Preview Tài liệu</h3>
           <div style="display: flex; gap: 12px;">
+            <button class="ktool-btn ktool-btn-secondary" id="editContentBtn">
+              ✏️ Chỉnh sửa nội dung
+            </button>
             <button class="ktool-btn ktool-btn-primary" id="createPageBtn">
               📄 Tạo trang Confluence
             </button>
@@ -557,9 +575,13 @@ class KToolContent {
     `;
 
     // Bind preview buttons
+    const editContentBtn = previewTab.querySelector("#editContentBtn");
     const createPageBtn = previewTab.querySelector("#createPageBtn");
     const downloadBtn = previewTab.querySelector("#downloadBtn");
 
+    editContentBtn.addEventListener("click", () =>
+      this.handleEditContent(content)
+    );
     createPageBtn.addEventListener("click", () => this.handleCreatePage());
     downloadBtn.addEventListener("click", () => this.handleDownload());
 
@@ -625,6 +647,44 @@ class KToolContent {
     URL.revokeObjectURL(url);
 
     this.showNotification("Tải xuống thành công!", "success");
+  }
+
+  handleEditContent(content) {
+    console.log("✏️ Opening content editor...");
+    console.log("🔍 Content to edit:", content);
+    console.log("🔍 ConfluenceEditor instance:", this.confluenceEditor);
+
+    if (!this.confluenceEditor) {
+      console.error("❌ ConfluenceEditor is null or undefined");
+      this.showNotification("Confluence Editor chưa được khởi tạo!", "error");
+      return;
+    }
+
+    try {
+      // Set up save callback to update the generated content
+      this.confluenceEditor.setSaveCallback((updatedContent) => {
+        console.log("💾 Content updated:", updatedContent);
+
+        // Update the stored generated content
+        this.generatedContent = updatedContent;
+
+        // Refresh the preview tab with updated content
+        this.updatePreviewTab(updatedContent);
+
+        this.showNotification("Nội dung đã được cập nhật!", "success");
+      });
+
+      // Open the editor with current content
+      console.log("🚀 Opening ConfluenceEditor...");
+      this.confluenceEditor.openEditor(content, {
+        title: "Chỉnh sửa tài liệu đã sinh",
+        showMermaidTools: true,
+      });
+      console.log("✅ ConfluenceEditor opened successfully");
+    } catch (error) {
+      console.error("❌ Error opening ConfluenceEditor:", error);
+      this.showNotification(`Lỗi mở editor: ${error.message}`, "error");
+    }
   }
 
   handleReset() {
@@ -936,33 +996,6 @@ class KToolContent {
         </details>
       </div>
     `;
-  }
-
-  // Check if text contains Mermaid syntax
-  isMermaidSyntax(text) {
-    const cleanText = text.trim().toLowerCase();
-    const mermaidKeywords = [
-      "graph",
-      "flowchart",
-      "sequencediagram",
-      "classDiagram",
-      "stateDiagram",
-      "erDiagram",
-      "journey",
-      "gantt",
-      "pie",
-      "gitgraph",
-      "mindmap",
-      "timeline",
-      "quadrantChart",
-    ];
-
-    return mermaidKeywords.some(
-      (keyword) =>
-        cleanText.startsWith(keyword) ||
-        cleanText.includes(`\n${keyword}`) ||
-        cleanText.includes(`${keyword} `)
-    );
   }
 }
 
