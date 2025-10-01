@@ -618,12 +618,11 @@ class KToolContent {
 
       this.showNotification("Tạo trang Confluence thành công!", "success");
 
-      // Optionally redirect to new page
+      // Auto redirect to new page
       if (result.id) {
         const newPageUrl = `${window.location.origin}/pages/${result.id}`;
-        if (confirm("Bạn có muốn chuyển đến trang vừa tạo không?")) {
-          window.open(newPageUrl, "_blank");
-        }
+        console.log("🔗 Auto-opening new page:", newPageUrl);
+        window.open(newPageUrl, "_blank");
       }
     } catch (error) {
       console.error("❌ Create page error:", error);
@@ -688,12 +687,12 @@ class KToolContent {
   }
 
   handleReset() {
-    if (confirm("Bạn có chắc muốn reset form?")) {
-      document.getElementById("baDocUrl").value = window.location.href;
-      document.getElementById("additionalNotes").value = "";
-      this.hideProgress();
-      this.switchTab("generate");
-    }
+    // Auto reset form without confirm
+    console.log("🔄 Auto-resetting form...");
+    document.getElementById("baDocUrl").value = window.location.href;
+    document.getElementById("additionalNotes").value = "";
+    this.hideProgress();
+    this.switchTab("generate");
   }
 
   showProgress() {

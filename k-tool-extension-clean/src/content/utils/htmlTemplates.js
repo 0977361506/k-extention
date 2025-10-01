@@ -1,0 +1,240 @@
+// HTML Templates for Confluence Editor
+// Contains all HTML template strings and styling utilities
+
+export class HTMLTemplates {
+  /**
+   * Get the main editor HTML template
+   * @returns {string} HTML template string
+   */
+  static getEditorTemplate() {
+    return `
+      <div class="confluence-editor-container">
+        <div class="confluence-editor-header">
+          <h2 class="confluence-editor-title">
+            📝 Chỉnh sửa nội dung Confluence
+          </h2>
+          <div class="confluence-editor-actions">
+            <button class="editor-btn editor-btn-primary" id="editor-save-btn">
+              💾 Lưu thay đổi
+            </button>
+            <button class="editor-btn editor-btn-secondary" id="editor-close-btn">
+              ✕ Đóng
+            </button>
+          </div>
+        </div>
+
+        <div class="confluence-editor-tabs">
+          <button class="confluence-editor-tab active" id="content-tab">
+            📝 Chỉnh sửa nội dung
+          </button>
+          <button class="confluence-editor-tab" id="mermaid-tab">
+            📊 Chỉnh sửa Mermaid
+          </button>
+        </div>
+
+        <div class="confluence-editor-body">
+          ${this.getContentTabTemplate()}
+          ${this.getMermaidTabTemplate()}
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Get content tab template
+   * @returns {string} Content tab HTML
+   */
+  static getContentTabTemplate() {
+    return `
+      <!-- Content Tab -->
+      <div class="tab-content active" id="content-tab-content">
+        <div class="content-editor-layout">
+          <!-- Raw XHTML Editor (Left) -->
+          <div class="content-editor-pane">
+            <div class="content-editor-header">
+              📝 Raw XHTML Content
+            </div>
+            <div class="content-editor-body">
+              <textarea class="raw-content-editor" id="raw-content-editor" placeholder="Raw XHTML content will appear here..."></textarea>
+            </div>
+          </div>
+
+          <!-- Preview Pane (Right) -->
+          <div class="content-preview-pane">
+            <div class="content-editor-header">
+              👁️ Live Preview
+            </div>
+            <div class="content-editor-body">
+              <div class="content-preview" id="content-preview">
+                <!-- Preview content will be rendered here -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Get mermaid tab template
+   * @returns {string} Mermaid tab HTML
+   */
+  static getMermaidTabTemplate() {
+    return `
+      <!-- Mermaid Tab -->
+      <div class="tab-content" id="mermaid-tab-content">
+        <div class="mermaid-editor-layout">
+          <!-- Mermaid Code Editor (Left) -->
+          <div class="mermaid-code-pane">
+            <div class="mermaid-editor-header">
+              📊 Mermaid Code
+              <select id="mermaid-selector" class="mermaid-selector">
+                <option value="">Select diagram...</option>
+              </select>
+            </div>
+            <div class="mermaid-editor-body">
+              <textarea class="mermaid-code-editor" id="mermaid-code-editor" placeholder="Select a Mermaid diagram to edit..."></textarea>
+            </div>
+          </div>
+
+          <!-- Mermaid Preview (Center) -->
+          <div class="mermaid-preview-pane">
+            <div class="mermaid-editor-header">
+              📊 Diagram Preview
+              ${this.getZoomControlsTemplate()}
+            </div>
+            <div class="mermaid-editor-body">
+              <div class="mermaid-preview" id="mermaid-preview">
+                <div class="mermaid-placeholder">
+                  Select a diagram to preview
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI Chat (Right) -->
+          <div class="mermaid-ai-pane">
+            <div class="mermaid-editor-header">
+              🤖 AI Assistant
+            </div>
+            <div class="mermaid-editor-body">
+              ${this.getAIChatTemplate()}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Get zoom controls template
+   * @returns {string} Zoom controls HTML
+   */
+  static getZoomControlsTemplate() {
+    return `
+      <div class="mermaid-zoom-controls">
+        <button class="zoom-btn" id="zoom-out" title="Zoom Out">−</button>
+        <div class="zoom-level" id="zoom-level">100%</div>
+        <button class="zoom-btn" id="zoom-in" title="Zoom In">+</button>
+        <button class="zoom-btn" id="zoom-reset" title="Reset Zoom">⌂</button>
+      </div>
+    `;
+  }
+
+  /**
+   * Get AI chat template
+   * @returns {string} AI chat HTML
+   */
+  static getAIChatTemplate() {
+    return `
+      <div class="ai-chat-container">
+        <div class="ai-chat-messages" id="ai-chat-messages">
+          <div class="ai-message">
+            <div class="ai-avatar">🤖</div>
+            <div class="ai-text">Hi! I can help you edit Mermaid diagrams. Select a diagram and ask me to modify it.</div>
+          </div>
+        </div>
+        <div class="ai-chat-input">
+          <input type="text" id="ai-prompt-input" placeholder="Describe how you want to modify the diagram..." />
+          <button id="ai-send-btn" class="ai-send-btn">Send</button>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Apply inline styles to HTML content for preview
+   * @param {string} content - Raw HTML content
+   * @returns {string} Styled HTML content
+   */
+  static applyPreviewStyles(content) {
+    return content
+      .replace(
+        /<h1>/g,
+        "<h1 style='color: #333; margin: 24px 0 16px 0; font-size: 1.8rem; border-bottom: 2px solid #e1e5e9; padding-bottom: 8px;'>"
+      )
+      .replace(
+        /<h2>/g,
+        "<h2 style='color: #555; margin: 20px 0 12px 0; font-size: 1.4rem;'>"
+      )
+      .replace(
+        /<h3>/g,
+        "<h3 style='color: #666; margin: 16px 0 8px 0; font-size: 1.2rem;'>"
+      )
+      .replace(
+        /<p>/g,
+        "<p style='margin: 12px 0; line-height: 1.6; color: #333;'>"
+      )
+      .replace(/<ul>/g, "<ul style='margin: 12px 0; padding-left: 24px;'>")
+      .replace(/<li>/g, "<li style='margin: 4px 0; line-height: 1.5;'>")
+      .replace(
+        /<table>/g,
+        "<table style='border-collapse: collapse; width: 100%; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1);'>"
+      )
+      .replace(
+        /<th>/g,
+        "<th style='border: 1px solid #ddd; padding: 12px; background: #f8f9fa; font-weight: 600; text-align: left;'>"
+      )
+      .replace(
+        /<td>/g,
+        "<td style='border: 1px solid #ddd; padding: 12px; vertical-align: top;'>"
+      )
+      .replace(/<strong>/g, "<strong style='color: #2c3e50;'>")
+      .replace(
+        /<code>/g,
+        "<code style='background: #f1f3f4; padding: 2px 4px; border-radius: 3px; font-family: monospace; font-size: 0.9em;'>"
+      );
+  }
+
+  /**
+   * Create AI message HTML
+   * @param {string} type - Message type ('user' or 'ai')
+   * @param {string} text - Message text
+   * @returns {string} AI message HTML
+   */
+  static createAIMessage(type, text) {
+    const avatar = type === "user" ? "👤" : "🤖";
+    const bgColor = type === "user" ? "#e5e7eb" : "#3b82f6";
+
+    return `
+      <div class="ai-message">
+        <div class="ai-avatar" style="background: ${bgColor};">${avatar}</div>
+        <div class="ai-text">${text}</div>
+      </div>
+    `;
+  }
+
+  /**
+   * Create mermaid diagram container with styling
+   * @param {number} index - Diagram index
+   * @returns {HTMLElement} Mermaid container element
+   */
+  static createMermaidContainer(index) {
+    const mermaidDiv = document.createElement("div");
+    mermaidDiv.className = "mermaid-diagram";
+    mermaidDiv.id = `preview-mermaid-${index}`;
+    mermaidDiv.style.cssText =
+      "margin: 20px 0; text-align: center; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6;";
+    return mermaidDiv;
+  }
+}

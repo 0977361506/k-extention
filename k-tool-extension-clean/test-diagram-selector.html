@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Diagram Selector</title>
+    <link rel="stylesheet" href="src/content/content.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Diagram Selector</h1>
+    
+    <div class="container">
+        <h2>Test Diagram Selector Behavior</h2>
+        <button onclick="openEditor()">Open Editor</button>
+        <button onclick="switchToMermaidTab()">Switch to Mermaid Tab</button>
+        <button onclick="testSaveAndCheck()">Save & Check Selector</button>
+        <button onclick="clearResults()">Clear Results</button>
+    </div>
+
+    <div class="container">
+        <h2>Test Results</h2>
+        <div id="results"></div>
+    </div>
+
+    <script type="module">
+        import { ConfluenceEditor } from './src/content/confluenceEditor.js';
+
+        // Global editor instance
+        window.editor = new ConfluenceEditor();
+
+        // Test content with multiple Mermaid diagrams
+        const testContent = {
+            id: 'test-selector',
+            title: 'Test Selector Content',
+            full_storage_format: `<h1>Test Content với Multiple Diagrams</h1>
+<p>This content has multiple Mermaid diagrams to test selector behavior.</p>
+
+<h2>Diagram 1: Flowchart</h2>
+<ac:structured-macro ac:name="mermaid">
+    <ac:parameter ac:name="code">
+        <![CDATA[
+        flowchart TD
+            A[Start] --> B[Process]
+            B --> C[End]
+        ]]>
+    </ac:parameter>
+</ac:structured-macro>
+
+<h2>Diagram 2: ER Diagram</h2>
+<ac:structured-macro ac:name="mermaid">
+    <ac:parameter ac:name="code">
+        <![CDATA[
+        erDiagram
+            USER {
+                int id PK
+                string name
+                string email
+            }
+            PROJECT {
+                int id PK
+                string title
+                int user_id FK
+            }
+            USER ||--o{ PROJECT : owns
+        ]]>
+    </ac:parameter>
+</ac:structured-macro>
+
+<h2>Diagram 3: Sequence</h2>
+<ac:structured-macro ac:name="mermaid">
+    <ac:parameter ac:name="code">
+        <![CDATA[
+        sequenceDiagram
+            participant A as Client
+            participant B as Server
+            A->>B: Request
+            B->>A: Response
+        ]]>
+    </ac:parameter>
+</ac:structured-macro>
+
+<p>End of content.</p>`
+        };
+
+        // Save callback
+        const saveCallback = (content) => {
+            console.log('💾 Save callback called:', content);
+            showResult('✅ Save callback executed', 'success');
+            return Promise.resolve(content);
+        };
+
+        // Open editor
+        window.openEditor = function() {
+            try {
+                console.log('🔄 Opening editor...');
+                
+                window.editor.setSaveCallback(saveCallback);
+                window.editor.openEditor(testContent);
+                
+                showResult('✅ Editor opened successfully', 'success');
+                showResult('📋 Content has 3 Mermaid diagrams', 'info');
+                
+            } catch (error) {
+                console.error('❌ Error opening editor:', error);
+                showResult(`❌ Error opening editor: ${error.message}`, 'error');
+            }
+        };
+
+        // Switch to Mermaid tab
+        window.switchToMermaidTab = function() {
+            if (!window.editor.isEditorOpen) {
+                showResult('❌ Please open editor first!', 'error');
+                return;
+            }
+
+            try {
+                // Find and click Mermaid tab
+                const mermaidTab = document.querySelector('#mermaid-tab');
+                if (mermaidTab) {
+                    mermaidTab.click();
+                    showResult('✅ Switched to Mermaid tab', 'success');
+                    
+                    // Check selector options
+                    setTimeout(() => {
+                        const selector = document.querySelector('#mermaid-selector');
+                        if (selector) {
+                            const optionCount = selector.options.length - 1; // Exclude default option
+                            showResult(`📊 Selector has ${optionCount} diagram options`, 'info');
+                            
+                            // List all options
+                            for (let i = 1; i < selector.options.length; i++) {
+                                showResult(`  ${i}. ${selector.options[i].textContent}`, 'info');
+                            }
+                        }
+                    }, 500);
+                } else {
+                    showResult('❌ Mermaid tab not found', 'error');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error switching to Mermaid tab:', error);
+                showResult(`❌ Error switching tab: ${error.message}`, 'error');
+            }
+        };
+
+        // Test save and check selector
+        window.testSaveAndCheck = function() {
+            if (!window.editor.isEditorOpen) {
+                showResult('❌ Please open editor first!', 'error');
+                return;
+            }
+
+            try {
+                console.log('🧪 Testing save and selector behavior...');
+                
+                // Get selector state before save
+                const selector = document.querySelector('#mermaid-selector');
+                let beforeCount = 0;
+                let beforeOptions = [];
+                
+                if (selector) {
+                    beforeCount = selector.options.length - 1;
+                    for (let i = 1; i < selector.options.length; i++) {
+                        beforeOptions.push(selector.options[i].textContent);
+                    }
+                    showResult(`📊 Before save: ${beforeCount} options`, 'info');
+                }
+                
+                // Trigger save
+                window.editor.saveChanges().then(() => {
+                    showResult('✅ Save completed', 'success');
+                    
+                    // Check selector state after save
+                    setTimeout(() => {
+                        const selectorAfter = document.querySelector('#mermaid-selector');
+                        if (selectorAfter) {
+                            const afterCount = selectorAfter.options.length - 1;
+                            let afterOptions = [];
+                            
+                            for (let i = 1; i < selectorAfter.options.length; i++) {
+                                afterOptions.push(selectorAfter.options[i].textContent);
+                            }
+                            
+                            showResult(`📊 After save: ${afterCount} options`, 'info');
+                            
+                            // Compare before and after
+                            if (beforeCount === afterCount) {
+                                showResult('✅ Selector option count unchanged', 'success');
+                            } else {
+                                showResult(`❌ Selector option count changed: ${beforeCount} → ${afterCount}`, 'error');
+                            }
+                            
+                            // Check for duplicates or changes
+                            const duplicates = afterOptions.filter((item, index) => afterOptions.indexOf(item) !== index);
+                            if (duplicates.length > 0) {
+                                showResult(`❌ Found duplicate options: ${duplicates.join(', ')}`, 'error');
+                            } else {
+                                showResult('✅ No duplicate options found', 'success');
+                            }
+                            
+                            // List options after save
+                            showResult('📋 Options after save:', 'info');
+                            afterOptions.forEach((option, index) => {
+                                showResult(`  ${index + 1}. ${option}`, 'info');
+                            });
+                        }
+                    }, 1000);
+                    
+                }).catch(error => {
+                    showResult(`❌ Save failed: ${error.message}`, 'error');
+                });
+                
+            } catch (error) {
+                console.error('❌ Error testing save:', error);
+                showResult(`❌ Error testing save: ${error.message}`, 'error');
+            }
+        };
+
+        // Clear results
+        window.clearResults = function() {
+            document.getElementById('results').innerHTML = '';
+        };
+
+        // Show result
+        function showResult(message, type) {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type}`;
+            resultDiv.textContent = message;
+            resultsDiv.appendChild(resultDiv);
+            
+            console.log(message);
+        }
+
+        // Auto-run on page load
+        window.addEventListener('load', () => {
+            console.log('🚀 Diagram selector test page loaded');
+            showResult('📋 Page loaded - ready for testing', 'info');
+            showResult('🔍 Test steps:', 'info');
+            showResult('1. Click "Open Editor"', 'info');
+            showResult('2. Click "Switch to Mermaid Tab"', 'info');
+            showResult('3. Check selector options (should be 3)', 'info');
+            showResult('4. Click "Save & Check Selector"', 'info');
+            showResult('5. Verify selector options remain consistent', 'info');
+        });
+    </script>
+</body>
+</html>
