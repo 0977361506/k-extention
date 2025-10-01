@@ -1,0 +1,861 @@
+// Advanced Edit Tab Component Styles with TinyMCE Editor
+.container {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  background: #f8fafc;
+  min-height: 100vh;
+}
+
+.header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 8px 8px 0 0;
+  margin-bottom: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.headerContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+}
+
+.headerInfo {
+  flex: 1;
+}
+
+.headerTitle {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+
+  @media (max-width: 768px) {
+    font-size: 24px;
+  }
+}
+
+.headerDescription {
+  margin: 0;
+  font-size: 16px;
+  opacity: 0.9;
+  line-height: 1.4;
+
+  @media (max-width: 768px) {
+    font-size: 14px;
+  }
+}
+
+.headerActions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+}
+
+.actionButton {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  &:hover:not(.disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &.saveButton {
+    background: #28a745;
+    color: white;
+
+    &:hover:not(.disabled) {
+      background: #218838;
+    }
+  }
+
+  &.createButton {
+    background: #007bff;
+    color: white;
+
+    &:hover:not(.disabled) {
+      background: #0056b3;
+    }
+  }
+
+  &.backButton {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  }
+
+  &.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  @media (max-width: 768px) {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+}
+
+// Page Title Section
+.titleSection {
+  background: white;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  border-top: none;
+  border-radius: 0;
+}
+
+.titleLabel {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.titleInput {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.2s ease;
+
+  &:focus {
+    border-color: #667eea;
+  }
+
+  &:placeholder-shown {
+    font-weight: normal;
+  }
+}
+
+/* Custom Toolbar Styles */
+.customToolbar {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+}
+
+.toolbar {
+  background: white;
+  padding: 12px 20px;
+  border: 1px solid #e2e8f0;
+  border-top: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-height: 60px;
+}
+
+.toolbarButton {
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #f8fafc;
+    border-color: #cbd5e0;
+  }
+
+  &:active {
+    background: #e2e8f0;
+  }
+
+  &.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+
+.toolbarGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbarDivider {
+  width: 1px;
+  height: 32px;
+  background: #e2e8f0;
+  margin: 0 8px;
+}
+
+// Editor Container
+.editorContainer {
+  background: white;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  
+  // TinyMCE specific styling
+  :global(.tox-tinymce) {
+    border-radius: 0 0 8px 8px;
+    border: none;
+    box-shadow: none;
+  }
+  
+  :global(.tox-toolbar-overlord) {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  
+  :global(.tox-toolbar__primary) {
+    background: #f8fafc;
+    padding: 8px;
+  }
+  
+  :global(.tox-tbtn) {
+    margin: 2px;
+    border-radius: 4px;
+    
+    &:hover {
+      background: #e2e8f0;
+    }
+  }
+  
+  :global(.tox-editor-container) {
+    background: white;
+  }
+  
+  :global(.tox-edit-area__iframe) {
+    background: white;
+  }
+  
+  :global(.tox-statusbar) {
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+  }
+}
+
+.editor {
+  min-height: 500px;
+  
+  // Additional TinyMCE content styling will be handled via the content_style config
+}
+
+.editorLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 500px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0 0 8px 8px;
+  
+  p {
+    color: #64748b;
+    font-size: 16px;
+    margin: 0;
+  }
+}
+
+  // Task list styles
+  .ProseMirror ul[data-type="taskList"] {
+    list-style: none;
+    padding: 0;
+
+    li {
+      display: flex;
+      align-items: flex-start;
+      margin: 0.5em 0;
+
+      > label {
+        margin-right: 0.5em;
+        user-select: none;
+      }
+
+      > div {
+        flex: 1;
+      }
+    }
+  }
+
+  // Text alignment
+  .ProseMirror [data-text-align="left"] {
+    text-align: left;
+  }
+
+  .ProseMirror [data-text-align="center"] {
+    text-align: center;
+  }
+
+  .ProseMirror [data-text-align="right"] {
+    text-align: right;
+  }
+
+  // Placeholder
+  .ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    color: #adb5bd;
+    pointer-events: none;
+    height: 0;
+  }
+
+  // Enhanced Table Styles
+  :global(.tiptap-table) {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 16px 0;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+    th,
+    td {
+      border: 1px solid #e2e8f0;
+      padding: 12px 16px;
+      text-align: left;
+      vertical-align: top;
+      position: relative;
+
+      &:hover {
+        background-color: #f7fafc;
+      }
+    }
+
+    th {
+      background: linear-gradient(135deg, #4a90e2 0%, #3a7bd5 100%);
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+
+      &:hover {
+        background: linear-gradient(135deg, #357abd 0%, #2d5aa0 100%);
+      }
+    }
+
+    tr:nth-child(even) td {
+      background-color: #f8fafc;
+    }
+
+    // Selected cell highlighting
+    .selectedCell {
+      background-color: #e3f2fd !important;
+      outline: 2px solid #2196f3;
+    }
+
+    // Resize handles
+    .column-resize-handle {
+      position: absolute;
+      right: -2px;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      cursor: col-resize;
+      background: transparent;
+
+      &:hover {
+        background: #2196f3;
+      }
+    }
+  }
+
+  // Mermaid Diagram Styles
+  :global(.mermaid-diagram-wrapper) {
+    margin: 16px 0;
+    
+    &.selected {
+      outline: 2px solid #0066cc;
+      outline-offset: 2px;
+      border-radius: 8px;
+    }
+
+    .mermaid {
+      text-align: center;
+      
+      svg {
+        max-width: 100%;
+        height: auto;
+        border-radius: 6px;
+        background: white;
+        padding: 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+    }
+  }
+
+  // Code block improvements
+  :global(.code-block) {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 16px;
+    border-radius: 8px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    overflow-x: auto;
+    margin: 16px 0;
+    border: 1px solid #404040;
+
+    // Syntax highlighting for Mermaid
+    &.language-mermaid {
+      background: #f8f9fa;
+      color: #495057;
+      border: 1px solid #dee2e6;
+    }
+  }
+
+  // Task list improvements
+  :global(.task-list) {
+    list-style: none;
+    padding-left: 0;
+
+    li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin: 4px 0;
+
+      input[type="checkbox"] {
+        margin-top: 4px;
+        cursor: pointer;
+      }
+
+      &[data-checked="true"] {
+        text-decoration: line-through;
+        opacity: 0.6;
+      }
+    }
+  }
+
+  // Link improvements
+  :global(.link) {
+    color: #0066cc;
+    text-decoration: underline;
+    cursor: pointer;
+
+    &:hover {
+      color: #004499;
+      background-color: #e3f2fd;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+  }
+
+  // Image improvements
+  :global(.image) {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 8px 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+
+    &:hover {
+      transform: scale(1.02);
+      transition: transform 0.2s ease;
+    }
+  }
+
+  /* Quill Snow Theme Customization */
+  :global(.ql-toolbar) {
+    border-top: none;
+    border-left: 1px solid #e2e8f0;
+    border-right: 1px solid #e2e8f0;
+    background: #fafafa;
+    padding: 12px;
+  }
+
+  :global(.ql-container) {
+    border-bottom: 1px solid #e2e8f0;
+    border-left: 1px solid #e2e8f0;
+    border-right: 1px solid #e2e8f0;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  :global(.ql-editor) {
+    min-height: 350px;
+    padding: 20px;
+    
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.5em;
+      margin-bottom: 0.5em;
+      font-weight: 600;
+    }
+
+    h1 { font-size: 2em; }
+    h2 { font-size: 1.75em; }
+    h3 { font-size: 1.5em; }
+    h4 { font-size: 1.25em; }
+    h5 { font-size: 1.1em; }
+    h6 { font-size: 1em; }
+
+    p {
+      margin-bottom: 1em;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 1em 0;
+      
+      td, th {
+        border: 1px solid #e2e8f0;
+        padding: 12px;
+        text-align: left;
+      }
+      
+      th {
+        background-color: #f8fafc;
+        font-weight: 600;
+      }
+      
+      tr:nth-child(even) {
+        background-color: #fafafa;
+      }
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      margin: 1em 0;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    blockquote {
+      border-left: 4px solid #667eea;
+      padding-left: 16px;
+      margin: 1em 0;
+      font-style: italic;
+      background: #f8fafc;
+      padding: 12px 16px;
+      border-radius: 0 4px 4px 0;
+    }
+
+    code {
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 0.9em;
+    }
+
+    pre {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 16px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 1em 0;
+      
+      code {
+        background: none;
+        color: inherit;
+        padding: 0;
+      }
+    }
+  }
+
+  :global(.ql-snow .ql-tooltip) {
+    background: white;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+  }
+
+// TinyMCE editor global styles
+:global(.tox-tinymce) {
+  border-radius: 0 0 8px 8px;
+  
+  .tox-toolbar-overlord {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  
+  .tox-toolbar__primary {
+    background: #f8fafc;
+    padding: 8px;
+  }
+  
+  .tox-tbtn {
+    margin: 2px;
+    border-radius: 4px;
+    
+    &:hover {
+      background: #e2e8f0;
+    }
+  }
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  font-size: 18px;
+  color: #6c757d;
+}
+
+// Footer Info
+.footerInfo {
+  background: white;
+  padding: 16px 20px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  margin-top: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.footerText {
+  margin: 0;
+  font-size: 14px;
+  color: #4a5568;
+  line-height: 1.5;
+  
+  code {
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+    color: #2d3748;
+    font-family: 'Monaco', 'Consolas', monospace;
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+
+  .toolbar {
+    padding: 8px 12px;
+    gap: 4px;
+  }
+
+  .toolbarButton {
+    padding: 6px 8px;
+    font-size: 12px;
+    min-width: 36px;
+  }
+
+  .editor {
+    padding: 16px;
+    font-size: 14px;
+  }
+
+  .ProseMirror {
+    min-height: 400px;
+  }
+}
+
+// Focus styles
+.editor:focus-within {
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+// Dialog Styles
+.dialogOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.dialog {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  min-width: 400px;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+
+  h3 {
+    margin: 0 0 16px 0;
+    color: #1a202c;
+    font-size: 18px;
+    font-weight: 600;
+  }
+}
+
+.dialogInput {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  margin-bottom: 12px;
+  
+  &:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+}
+
+.tableControls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-weight: 500;
+    color: #374151;
+  }
+}
+
+.numberInput {
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  
+  &:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+}
+
+.diagramTextarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 200px;
+  margin-bottom: 12px;
+  
+  &:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+}
+
+.diagramPreview {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
+  color: #6b7280;
+  font-style: italic;
+  text-align: center;
+}
+
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.dialogButton {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:first-child {
+    background: #667eea;
+    color: white;
+
+    &:hover {
+      background: #5a67d8;
+    }
+  }
+
+  &:last-child {
+    background: #f7fafc;
+    color: #4a5568;
+    border: 1px solid #e2e8f0;
+
+    &:hover {
+      background: #edf2f7;
+    }
+  }
+}
+
+// Animation for toolbar buttons
+@keyframes buttonPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.toolbarButton:active {
+  animation: buttonPulse 0.1s ease-in-out;
+}

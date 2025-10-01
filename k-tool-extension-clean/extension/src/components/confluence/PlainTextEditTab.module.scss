@@ -1,0 +1,381 @@
+// Plain Text Edit Tab Component Styles
+.container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  background: #f8fafc;
+  min-height: 100vh;
+}
+
+.header {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 8px 8px 0 0;
+  margin-bottom: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.headerContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+}
+
+.headerInfo {
+  flex: 1;
+}
+
+.headerTitle {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+
+  @media (max-width: 768px) {
+    font-size: 24px;
+  }
+}
+
+.headerDescription {
+  margin: 0;
+  font-size: 16px;
+  opacity: 0.9;
+  line-height: 1.4;
+
+  @media (max-width: 768px) {
+    font-size: 14px;
+  }
+}
+
+.headerActions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+}
+
+.backButton {
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  @media (max-width: 768px) {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+}
+
+// Editor Container
+.editorContainer {
+  background: white;
+  padding: 20px;
+  border-radius: 0 0 8px 8px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+// Page Title Section
+.titleSection {
+  margin-bottom: 20px;
+}
+
+.titleLabel {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.titleInput {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.2s ease;
+
+  &:focus {
+    border-color: #28a745;
+  }
+
+  &:placeholder-shown {
+    font-weight: normal;
+  }
+}
+
+// Toolbar
+.toolbar {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.toolbarButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.toolbarButton {
+  padding: 8px 12px;
+  margin: 0 4px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+
+  &:hover {
+    background: #e9ecef;
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  @media (max-width: 768px) {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}
+
+.toolbarDivider {
+  width: 1px;
+  background: #dee2e6;
+  margin: 0 8px;
+  height: 32px;
+}
+
+// Text Editor
+.textEditor {
+  margin-bottom: 16px;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 400px;
+  padding: 16px;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s ease;
+
+  &:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.1);
+  }
+
+  @media (max-width: 768px) {
+    min-height: 300px;
+    padding: 12px;
+    font-size: 13px;
+  }
+}
+
+// Stats and Actions
+.statsActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px solid #e9ecef;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+}
+
+.stats {
+  display: flex;
+  gap: 16px;
+  font-size: 14px;
+  color: #6c757d;
+
+  @media (max-width: 768px) {
+    gap: 12px;
+    font-size: 13px;
+  }
+}
+
+.actionButtons {
+  display: flex;
+  gap: 12px;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    gap: 8px;
+  }
+}
+
+.actionButton {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  @media (max-width: 768px) {
+    padding: 10px 16px;
+    font-size: 13px;
+    flex: 1;
+    justify-content: center;
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  &:focus {
+    outline: 2px solid rgba(0, 0, 0, 0.2);
+    outline-offset: 2px;
+  }
+}
+
+.clearButton {
+  background: #dc3545;
+  color: white;
+
+  &:hover:not(:disabled) {
+    background: #c82333;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.saveButton {
+  background: #17a2b8;
+  color: white;
+
+  &:hover:not(:disabled) {
+    background: #138496;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    background: #6c757d;
+  }
+}
+
+.createButton {
+  background: #28a745;
+  color: white;
+
+  &:hover:not(:disabled) {
+    background: #218838;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    background: #6c757d;
+  }
+}
+
+// Tips Section
+.tipsSection {
+  background: #e7f3ff;
+  padding: 16px;
+  border-radius: 8px;
+  margin-top: 20px;
+  border: 1px solid #b3d9ff;
+}
+
+.tipsTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0056b3;
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tipsContent {
+  font-size: 13px;
+  color: #495057;
+  line-height: 1.5;
+
+  strong {
+    color: #2d3748;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 12px;
+  }
+}
+
+// Animation for loading states
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.disabled {
+  animation: pulse 2s infinite;
+}

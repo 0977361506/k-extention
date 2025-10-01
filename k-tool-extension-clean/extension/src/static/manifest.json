@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "K-tool-document",
+  "description": "K-tool-document",
+  "version": "1.0.1",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "K-tool-document",
+    "default_icon": "icon.png"
+  },
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": ["http://localhost:8090/*"],
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://localhost:8090/*"],
+      "js": ["confluence.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "skins/**/*",
+        "skins/ui/oxide/skin.css",
+        "skins/ui/oxide/content.css",
+        "skins/ui/oxide/skin.js",
+        "skins/ui/oxide/content.js",
+        "icons/**/*",
+        "icons/default/icons.js",
+        "icons/default/icons.min.js",
+        "tinymce.min.js"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

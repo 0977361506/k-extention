@@ -1,0 +1,303 @@
+// NotificationProvider.module.scss
+.container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000000;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 400px;
+  pointer-events: none;
+}
+
+.notification {
+  background: var(--neutral-50);
+  border-radius: 12px;
+  box-shadow: 
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--neutral-200);
+  overflow: hidden;
+  pointer-events: auto;
+  animation: slideInRight 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  max-width: 100%;
+  
+  &.success {
+    border-left: 4px solid var(--success-500);
+    background: linear-gradient(135deg, var(--success-50), var(--neutral-50));
+    
+    .icon {
+      color: var(--success-600);
+    }
+    
+    .title {
+      color: var(--success-800);
+    }
+    
+    .progressBar .progress {
+      background: linear-gradient(90deg, var(--success-500), var(--success-400));
+    }
+  }
+  
+  &.error {
+    border-left: 4px solid var(--error-500);
+    background: linear-gradient(135deg, var(--error-50), var(--neutral-50));
+    
+    .icon {
+      color: var(--error-600);
+    }
+    
+    .title {
+      color: var(--error-800);
+    }
+    
+    .progressBar .progress {
+      background: linear-gradient(90deg, var(--error-500), var(--error-400));
+    }
+  }
+  
+  &.warning {
+    border-left: 4px solid var(--warning-500);
+    background: linear-gradient(135deg, var(--warning-50), var(--neutral-50));
+    
+    .icon {
+      color: var(--warning-600);
+    }
+    
+    .title {
+      color: var(--warning-800);
+    }
+    
+    .progressBar .progress {
+      background: linear-gradient(90deg, var(--warning-500), var(--warning-400));
+    }
+  }
+  
+  &.info {
+    border-left: 4px solid var(--primary-500);
+    background: linear-gradient(135deg, var(--primary-50), var(--neutral-50));
+    
+    .icon {
+      color: var(--primary-600);
+    }
+    
+    .title {
+      color: var(--primary-800);
+    }
+    
+    .progressBar .progress {
+      background: linear-gradient(90deg, var(--primary-500), var(--primary-400));
+    }
+  }
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+      0 25px 30px -5px rgba(0, 0, 0, 0.15),
+      0 15px 15px -5px rgba(0, 0, 0, 0.08);
+  }
+}
+
+.content {
+  padding: 16px 20px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--neutral-800);
+  margin: 0;
+  flex: 1;
+  line-height: 1.4;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--neutral-400);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: var(--neutral-100);
+    color: var(--neutral-600);
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.message {
+  font-size: 14px;
+  color: var(--neutral-600);
+  margin: 0;
+  line-height: 1.5;
+  padding-left: 32px; // Align with title (icon + gap)
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-left: 32px; // Align with title
+}
+
+.actionButton {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  
+  &.primary {
+    background: var(--primary-500);
+    color: white;
+    
+    &:hover {
+      background: var(--primary-600);
+      transform: translateY(-1px);
+    }
+  }
+  
+  &.secondary {
+    background: var(--neutral-100);
+    color: var(--neutral-700);
+    border-color: var(--neutral-200);
+    
+    &:hover {
+      background: var(--neutral-200);
+      transform: translateY(-1px);
+    }
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.progressBar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--neutral-200);
+  overflow: hidden;
+}
+
+.progress {
+  height: 100%;
+  background: var(--primary-500);
+  animation: progressAnimation 5s linear forwards;
+  border-radius: 0 3px 3px 0;
+}
+
+// Animations
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes progressAnimation {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+// Responsive design
+@media (max-width: 480px) {
+  .container {
+    left: 10px;
+    right: 10px;
+    top: 10px;
+    max-width: none;
+  }
+  
+  .notification {
+    margin: 0;
+  }
+}
+
+// Dark mode support
+@media (prefers-color-scheme: dark) {
+  .notification {
+    background: var(--neutral-800);
+    border-color: var(--neutral-700);
+    
+    &.success {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), var(--neutral-800));
+    }
+    
+    &.error {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), var(--neutral-800));
+    }
+    
+    &.warning {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), var(--neutral-800));
+    }
+    
+    &.info {
+      background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), var(--neutral-800));
+    }
+  }
+  
+  .title {
+    color: var(--neutral-100);
+  }
+  
+  .message {
+    color: var(--neutral-300);
+  }
+  
+  .closeButton {
+    color: var(--neutral-400);
+    
+    &:hover {
+      background: var(--neutral-700);
+      color: var(--neutral-200);
+    }
+  }
+  
+  .actionButton {
+    &.secondary {
+      background: var(--neutral-700);
+      color: var(--neutral-200);
+      border-color: var(--neutral-600);
+      
+      &:hover {
+        background: var(--neutral-600);
+      }
+    }
+  }
+}

@@ -1,0 +1,117 @@
+/* Vietnamese Font Support for K-Tool Extension */
+
+/* Font-face declarations for better Vietnamese support */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+/* Global font family with Vietnamese support */
+* {
+  font-family: 
+    'Inter', 
+    'Roboto',
+    'Segoe UI', 
+    'Arial Unicode MS', 
+    'Lucida Grande', 
+    'Noto Sans', 
+    'Helvetica Neue', 
+    Arial, 
+    sans-serif, 
+    'Apple Color Emoji', 
+    'Segoe UI Emoji',
+    'Noto Color Emoji';
+}
+
+/* Text rendering optimizations */
+body, html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+}
+
+/* Confluence content specific font styling */
+.confluence-content,
+.wiki-content,
+.content-body {
+  font-family: 
+    'Inter', 
+    'Roboto',
+    'Segoe UI', 
+    'Arial Unicode MS', 
+    'Lucida Grande', 
+    'Noto Sans', 
+    'Helvetica Neue', 
+    Arial, 
+    sans-serif !important;
+}
+
+/* Mermaid diagram font override */
+.mermaid,
+.mermaid * {
+  font-family: 
+    'Inter', 
+    'Roboto',
+    'Segoe UI', 
+    'Arial Unicode MS', 
+    'Lucida Grande', 
+    'Noto Sans', 
+    'Helvetica Neue', 
+    Arial, 
+    sans-serif !important;
+}
+
+/* SVG text elements (for mermaid diagrams) */
+svg text,
+svg tspan {
+  font-family: 
+    'Inter', 
+    'Roboto',
+    'Segoe UI', 
+    'Arial Unicode MS', 
+    'Lucida Grande', 
+    'Noto Sans', 
+    'Helvetica Neue', 
+    Arial, 
+    sans-serif !important;
+}
+
+/* Vietnamese character support classes */
+.vietnamese-text {
+  font-family: 
+    'Inter', 
+    'Roboto',
+    'Segoe UI', 
+    'Arial Unicode MS', 
+    'Lucida Grande', 
+    'Noto Sans', 
+    'Helvetica Neue', 
+    Arial, 
+    sans-serif;
+  font-feature-settings: 'kern' 1, 'liga' 1;
+  text-rendering: optimizeLegibility;
+}
+
+/* Code and monospace text */
+code, pre, .code {
+  font-family: 
+    'Fira Code', 
+    'Monaco', 
+    'Menlo', 
+    'Consolas', 
+    'Liberation Mono', 
+    'Courier New', 
+    monospace;
+}
+
+/* Ensure proper character encoding display */
+.content-wrapper {
+  unicode-bidi: normal;
+  direction: ltr;
+}
+
+/* Anti-aliasing for better readability */
+.smooth-text {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}

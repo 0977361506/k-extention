@@ -1,0 +1,251 @@
+// Enhanced Preview Tab Component Styles
+.container {
+  padding: 15px;
+  width: 100%;
+  margin: 0 auto;
+  background: #f8fafc;
+  min-height: 100vh;
+  overflow: hidden; // Bỏ scrollbar của container chính
+  
+  // Global scrollbar hiding
+  * {
+    scrollbar-width: none; // Firefox
+    -ms-overflow-style: none; // IE/Edge
+    
+    &::-webkit-scrollbar {
+      display: none; // Chrome/Safari
+    }
+  }
+}
+
+.header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 8px 8px 0 0;
+  margin-bottom: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.headerContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+}
+
+.headerInfo {
+  flex: 1;
+}
+
+.headerTitle {
+  margin: 0 0 8px 0;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+
+  @media (max-width: 768px) {
+    font-size: 20px;
+  }
+}
+
+.headerDescription {
+  margin: 0;
+  font-size: 16px;
+  opacity: 0.9;
+  line-height: 1.4;
+
+  @media (max-width: 768px) {
+    font-size: 14px;
+  }
+}
+
+.headerActions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+}
+
+.actionButton {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+
+  @media (max-width: 768px) {
+    padding: 10px 16px;
+    font-size: 14px;
+    flex: 1;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  &:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+}
+
+.createButton {
+  background: #28a745;
+  color: white;
+
+  &:hover:not(:disabled) {
+    background: #218838;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &.disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+  }
+}
+
+.saveButton {
+  background: #17a2b8;
+  color: white;
+
+  &:hover:not(:disabled) {
+    background: #138496;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &.disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+  }
+}
+
+.backButton {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.debugButton {
+  background: rgba(255, 193, 7, 0.2);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  color: white;
+  font-size: 12px;
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 193, 7, 0.3);
+    border-color: rgba(255, 193, 7, 0.4);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+// Empty State Styles
+.emptyState {
+  background: white;
+  padding: 60px 20px;
+  text-align: center;
+  border-radius: 0 0 8px 8px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+
+  @media (max-width: 768px) {
+    padding: 40px 20px;
+  }
+}
+
+.emptyIcon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  
+  @media (max-width: 768px) {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+}
+
+.emptyTitle {
+  color: #495057;
+  margin-bottom: 12px;
+  font-size: 24px;
+  font-weight: 600;
+
+  @media (max-width: 768px) {
+    font-size: 20px;
+    margin-bottom: 10px;
+  }
+}
+
+.emptyDescription {
+  color: #6c757d;
+  margin-bottom: 20px;
+  font-size: 16px;
+  line-height: 1.5;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+
+  @media (max-width: 768px) {
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+}
+
+// Animation for loading states
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.disabled {
+  animation: pulse 2s infinite;
+}

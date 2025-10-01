@@ -1,0 +1,598 @@
+// DiagramEditor.module.scss
+.container {
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  background: #fff;
+  margin: 12px 0;
+  overflow: hidden;
+}
+
+.toolbar {
+  background: #f8f9fa;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  .titleGroup {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .title {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .unsavedIndicator {
+      font-size: 12px;
+      color: #ffa500;
+      font-weight: 600;
+      animation: pulse 2s infinite;
+    }
+
+    .errorBadge {
+      font-size: 12px;
+      color: #dc3545;
+      background: #f8d7da;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+  }
+
+  .controls {
+    display: flex;
+    gap: 8px;
+  }
+}
+
+.viewModeButtons {
+  display: flex;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  overflow: hidden;
+
+  .viewButton {
+    padding: 6px 12px;
+    background: white;
+    color: #495057;
+    border: none;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &.active {
+      background: #0052cc;
+      color: white;
+    }
+
+    &:hover:not(.active) {
+      background: #f8f9fa;
+    }
+  }
+}
+
+.actionButtons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+
+  .zoomControls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-right: 8px;
+    padding: 4px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    
+    .zoomButton {
+      padding: 4px 8px;
+      border: none;
+      border-radius: 3px;
+      font-size: 11px;
+      cursor: pointer;
+      background: white;
+      color: #495057;
+      transition: all 0.2s ease;
+      
+      &:hover:not(:disabled) {
+        background: #f8f9fa;
+        transform: scale(1.05);
+      }
+      
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      
+      &.active {
+        background: #0052cc;
+        color: white;
+      }
+    }
+    
+    .zoomLevel {
+      font-size: 11px;
+      color: #6c757d;
+      font-weight: 600;
+      min-width: 40px;
+      text-align: center;
+    }
+  }
+
+  .actionButton {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &.reset {
+      background: #6f42c1;
+      color: white;
+
+      &:hover {
+        background: #5a2d91;
+      }
+    }
+
+    &.refresh {
+      background: #6c757d;
+      color: white;
+
+      &:hover {
+        background: #5a6268;
+      }
+    }
+
+    &.save {
+      background: #28a745;
+      color: white;
+
+      &:hover {
+        background: #218838;
+      }
+
+      &.hasUnsaved {
+        background: #ff6b35;
+        animation: saveButtonPulse 2s infinite;
+
+        &:hover {
+          background: #e55a2e;
+        }
+      }
+    }
+
+    &.cancel {
+      background: #dc3545;
+      color: white;
+
+      &:hover {
+        background: #c82333;
+      }
+    }
+  }
+}
+
+.content {
+  &.preview {
+    height: 500px; // Increased from 400px
+  }
+
+  &.edit {
+    height: 500px; // Increased from 400px
+    display: flex;
+  }
+
+  &.split {
+    height: 500px; // Increased from 400px
+    display: flex;
+
+    .leftPanel {
+      flex: 1;
+      border-right: 1px solid #e9ecef;
+    }
+
+    .rightPanel {
+      flex: 1;
+    }
+  }
+}
+
+.editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  .tip {
+    padding: 8px 12px;
+    background: #f1f3f4;
+    border-bottom: 1px solid #e9ecef;
+    font-size: 12px;
+    color: #495057;
+    flex-shrink: 0; // Prevent tip from shrinking
+  }
+
+  .textarea {
+    flex: 1;
+    border: none;
+    padding: 16px;
+    font-family: Monaco, Menlo, "Ubuntu Mono", monospace;
+    font-size: 13px;
+    resize: none;
+    outline: none;
+    min-height: 420px; // Specific minimum height to match preview
+    max-height: 420px; // Prevent expansion beyond container
+    line-height: 1.5;
+    overflow-y: auto;
+
+    &:focus {
+      background: #f8f9fa;
+    }
+  }
+}
+
+.preview {
+  flex: 1;
+  padding: 16px;
+  overflow: auto;
+  background: #fafafa;
+  border-left: 1px solid #e9ecef;
+  min-height: 420px; // Match textarea height
+  max-height: 420px; // Prevent expansion beyond container
+  
+  &.standalone {
+    border-left: none;
+    height: 100%; // Use full container height when standalone
+    min-height: 460px; // Account for container height
+    max-height: 460px;
+  }
+
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #6c757d;
+    font-style: italic;
+  }
+
+  .error {
+    color: #dc3545;
+    background: #f8d7da;
+    padding: 12px;
+    border-radius: 4px;
+    border: 1px solid #f5c6cb;
+    font-family: Monaco, Menlo, "Ubuntu Mono", monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+  }
+}
+
+// Animation for diagram rendering
+@keyframes diagramFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.diagramContainer {
+  animation: diagramFadeIn 0.3s ease-out;
+  overflow: hidden; // Bỏ scroll, chỉ dùng drag
+  max-height: 500px;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  background: #fafafa;
+  position: relative;
+  user-select: none;
+  transition: all 0.2s ease;
+  
+  &:focus {
+    outline: 2px solid #0052cc;
+    outline-offset: 2px;
+    border-color: #0052cc;
+  }
+  
+  &:hover {
+    border-color: #b3d4fc;
+  }
+  
+  &.dragging {
+    cursor: grabbing !important;
+    border-color: #0052cc;
+    box-shadow: 0 0 0 2px rgba(0, 82, 204, 0.2);
+    
+    * {
+      pointer-events: none;
+    }
+  }
+}
+
+.diagramContent {
+  min-width: 100%;
+  padding: 20px;
+  display: inline-block;
+  transition: transform 0.2s ease;
+  
+  svg {
+    max-width: none !important;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+  }
+}
+
+.scrollIndicator {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 82, 204, 0.9);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  pointer-events: none;
+  z-index: 10;
+  animation: fadeInOut 4s ease-in-out;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(4px);
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(-10px); }
+  15% { opacity: 1; transform: translateY(0); }
+  85% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-10px); }
+}
+
+// Additional styles for new features
+
+.diagramType {
+  font-size: 12px;
+  color: #6c757d;
+  background: rgba(108, 117, 125, 0.1);
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-left: 8px;
+}
+
+.chatControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px;
+  
+  .chatButton {
+    background: var(--gradient-aurora);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+    }
+    
+    &.active {
+      background: linear-gradient(135deg, #F43F5E 0%, #0EA5E9 100%);
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+      transform: scale(1.05);
+    }
+  }
+}
+
+.chatContainer {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.chatPanel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+// Enhanced split view for 3-panel layout (Code | Preview | Chat)
+.content.split {
+  display: flex;
+  height: 100%;
+  gap: 8px;
+
+  .leftPanel {
+    flex: 1;
+    border-right: 1px solid #e9ecef;
+    padding-right: 8px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0; // Prevent flex overflow
+  }
+
+  .rightPanel {
+    flex: 1;
+    padding: 0 8px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0; // Prevent flex overflow
+    border-right: 1px solid #e9ecef;
+  }
+
+  .chatPanel {
+    flex: 0 0 280px; // Fixed width for chat panel
+    padding-left: 8px;
+    display: flex;
+    flex-direction: column;
+    min-height: 400px;
+  }
+}
+
+// Enhanced toolbar for better spacing
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-bottom: 2px solid #e9ecef;
+  border-radius: 8px 8px 0 0;
+  min-height: 56px;
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+}
+
+// Animation for chat panel
+@keyframes chatPanelSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.chatContainer {
+  animation: chatPanelSlideIn 0.3s ease-out;
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .toolbar {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+
+    .controls {
+      justify-content: center;
+    }
+  }
+
+  .content.split {
+    flex-direction: column;
+
+    .leftPanel {
+      border-right: none;
+      border-bottom: 1px solid #e9ecef;
+    }
+  }
+
+  .viewModeButtons {
+    justify-content: center;
+  }
+
+  .actionButtons {
+    justify-content: center;
+  }
+}
+
+// Responsive adjustments for 3-panel chat
+@media (max-width: 1200px) {
+  .content.split {
+    .chatPanel {
+      flex: 0 0 250px; // Smaller on medium screens
+    }
+  }
+}
+
+@media (max-width: 1024px) {
+  .content.split {
+    flex-direction: column;
+    gap: 8px;
+
+    .leftPanel {
+      border-right: none;
+      border-bottom: 1px solid #e9ecef;
+      padding-right: 0;
+      padding-bottom: 8px;
+      flex: 0 0 150px; // Fixed height for code editor
+    }
+
+    .rightPanel {
+      padding: 8px 0;
+      flex: 1;
+      border-right: none;
+      border-bottom: 1px solid #e9ecef;
+      padding-bottom: 8px;
+    }
+
+    .chatPanel {
+      flex: 0 0 200px; // Fixed height for chat
+      padding-left: 0;
+      padding-top: 8px;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .toolbar {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+    padding: 12px;
+
+    .controls {
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+  }
+
+  .chatControls .chatButton {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+}
+
+// Animations
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes saveButtonPulse {
+  0% {
+    background: #ff6b35;
+    transform: scale(1);
+  }
+  50% {
+    background: #ff8c65;
+    transform: scale(1.02);
+  }
+  100% {
+    background: #ff6b35;
+    transform: scale(1);
+  }
+}

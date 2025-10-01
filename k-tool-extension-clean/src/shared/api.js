@@ -1,5 +1,9 @@
 // API utilities for K-Tool Extension
 import { API_URLS } from "./constants.js";
+import {
+  getDiagramConfluenceStyles,
+  processAndSaveDiagrams,
+} from "./diagramUtils.js";
 
 export class ApiClient {
   /**
@@ -461,46 +465,377 @@ export class ConfluenceApi {
   }
 
   /**
-   * Create new Confluence page
-   * @param {string} title - Page title
-   * @param {string} content - Page content (storage format)
-   * @param {string} spaceKey - Space key
-   * @param {string} parentId - Parent page ID (optional)
-   * @returns {Promise<Object>} Created page response
+   * Validate and clean page title to prevent font/encoding issues
    */
-  static async createPage(title, content, spaceKey, parentId = null) {
+  static validateAndCleanTitle(title) {
+    return (
+      title
+        // Remove control characters and invalid XML characters
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+        // Fix common encoding issues
+        .replace(/â€™/g, "'")
+        .replace(/â€œ/g, '"')
+        .replace(/â€/g, '"')
+        .replace(/â€¦/g, "...")
+        // Clean up whitespace
+        .replace(/\s+/g, " ")
+        .trim() ||
+      // Ensure title is not empty and has reasonable length
+      `Generated Document - ${new Date().toLocaleDateString()}`
+    );
+  }
+
+  /**
+   * Ensure UTF-8 encoding for content
+   */
+  static ensureUtf8Encoding(content) {
     try {
-      const payload = {
+      // Try to encode and decode to ensure proper UTF-8
+      const encoder = new TextEncoder();
+      const decoder = new TextDecoder("utf-8", { fatal: false });
+      const encoded = encoder.encode(content);
+      return decoder.decode(encoded);
+    } catch (error) {
+      console.warn("UTF-8 encoding issue, using original content:", error);
+      return content;
+    }
+  }
+
+  /**
+   * Basic content cleanup - EXACT copy from extension/src/api/api.ts
+   */
+  static basicContentCleanup(content) {
+    return (
+      content
+        // Remove code block prefixes
+        .replace(/^```\w*\s*/g, "")
+        .replace(/```\s*$/g, "")
+        .trim()
+
+        // Enhanced character cleanup for Vietnamese and UTF-8
+        .replace(/^\uFEFF/, "") // Remove BOM
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "") // Remove control characters
+
+        // Fix common encoding issues
+        .replace(/â€™/g, "'") // Smart apostrophe
+        .replace(/â€œ/g, '"') // Smart quote open
+        .replace(/â€/g, '"') // Smart quote close
+        .replace(/â€¦/g, "...") // Ellipsis
+        .replace(/â€"/g, "–") // En dash
+        .replace(/â€"/g, "—") // Em dash
+
+        // Clean up line breaks and whitespace
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n")
+        .replace(/\n{3,}/g, "\n\n") // Max 2 consecutive line breaks
+        .replace(/[ \t]+$/gm, "") // Remove trailing whitespace from lines
+        .replace(/^[ \t]+/gm, "") // Remove leading whitespace from lines (but preserve structure)
+        .trim()
+    );
+  }
+
+  /**
+   * Advanced HTML sanitization - EXACT copy from extension/src/api/api.ts
+   */
+  static advancedHTMLSanitization(content) {
+    console.log("🔬 Starting advanced HTML sanitization...");
+
+    // Step 1: Preprocess content to fix obvious issues
+    let processedContent = content
+      // Fix unclosed self-closing tags first
+      .replace(
+        /<(br|hr|img|input|meta|link|area|base|col|embed|source|track|wbr)([^>]*?)(?<!\/)\s*>/gi,
+        "<$1$2/>"
+      )
+      // Ensure proper quotes around attributes
+      .replace(/(\w+)=([^"\s>]+)(\s|>)/g, '$1="$2"$3')
+      // Fix common encoding issues before processing
+      .replace(/&(?![a-zA-Z0-9#]+;)/g, "&amp;")
+      // Remove any null bytes or control characters
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+      // Fix common Vietnamese encoding issues
+      .replace(/â€™/g, "'")
+      .replace(/â€œ/g, '"')
+      .replace(/â€/g, '"');
+
+    // Step 2: Basic structure validation and cleanup
+    let finalHTML = processedContent
+      // Remove empty tags that could cause issues (but keep non-breaking spaces)
+      .replace(/<(\w+)([^>]*?)>\s*<\/\1>/g, (match, tagName) => {
+        // Keep paragraph and cell tags with nbsp
+        if (["p", "td", "th", "li"].includes(tagName.toLowerCase())) {
+          return `<${tagName}>&nbsp;</${tagName}>`;
+        }
+        return ""; // Remove other empty tags
+      })
+      .replace(/>\s+</g, "><") // Remove spaces between tags
+      .replace(/\s+/g, " ") // Normalize whitespace
+      .trim();
+
+    console.log("✅ Advanced HTML sanitization complete");
+    console.log(
+      `📊 Original length: ${content.length}, Final length: ${finalHTML.length}`
+    );
+
+    return finalHTML;
+  }
+
+  /**
+   * Convert all macros to mermaid-cloud macros - EXACT copy from extension/src/api/api.ts
+   */
+  static convertToMermaidCloudMacros(content) {
+    console.log("🔄 Converting all macros to mermaid-cloud macros...");
+    let macroCounter = 1;
+    let macroId = 111;
+
+    // Replace all structured macros (mermaid, code, etc.) with mermaid-cloud macros
+    const convertedContent = content.replace(
+      /<ac:structured-macro[^>]*>[\s\S]*?<\/ac:structured-macro>/g,
+      (match) => {
+        const filename = `k-tool-diagram-${macroCounter}`;
+        const currentId = macroId.toString();
+        macroCounter++;
+        macroId++;
+
+        console.log(
+          `🔧 Converting macro ${
+            macroCounter - 1
+          } to mermaid-cloud: ${filename}`
+        );
+
+        return `<ac:structured-macro ac:name="mermaid-cloud" ac:schema-version="1" ac:macro-id="${currentId}">
+<ac:parameter ac:name="toolbar">bottom</ac:parameter>
+<ac:parameter ac:name="filename">${filename}</ac:parameter>
+<ac:parameter ac:name="format">svg</ac:parameter>
+<ac:parameter ac:name="zoom">fit</ac:parameter>
+<ac:parameter ac:name="revision">1</ac:parameter>
+</ac:structured-macro>`;
+      }
+    );
+
+    console.log(`✅ Converted ${macroCounter - 1} macros to mermaid-cloud`);
+    return convertedContent;
+  }
+
+  /**
+   * Validate and fix XML content specifically for Confluence storage format
+   */
+  static validateAndFixXML(content) {
+    let fixed = content;
+
+    console.log("🔍 Validating and fixing XML content...");
+
+    // Fix the specific issue mentioned in error: spaces in tag names
+    fixed = fixed
+      // Remove spaces at the beginning of tag names
+      .replace(/<\s+([a-zA-Z])/g, "<$1")
+      // Remove spaces at the end of tag names (before attributes or closing >)
+      .replace(/([a-zA-Z])\s+([^>]*>)/g, "$1 $2")
+      // Fix spaces in closing tags
+      .replace(/<\/\s+([a-zA-Z][^>]*?)>/g, "</$1>")
+      // Fix malformed attributes with spaces
+      .replace(/([a-zA-Z-]+)\s*=\s*"([^"]*)"/g, '$1="$2"')
+      // Remove multiple consecutive spaces in content
+      .replace(/\s{2,}/g, " ")
+      // Fix line breaks that might cause parsing issues
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n");
+
+    // Validate specific Confluence storage format requirements
+    fixed = fixed
+      // Ensure proper ac: namespace usage
+      .replace(/<ac:([^>]+)>/g, (match, content) => {
+        return `<ac:${content.trim()}>`;
+      })
+      // Fix structured macro formatting
+      .replace(/<ac:structured-macro\s+([^>]+)>/g, (match, attrs) => {
+        const cleanAttrs = attrs.trim().replace(/\s+/g, " ");
+        return `<ac:structured-macro ${cleanAttrs}>`;
+      })
+      // Ensure CDATA sections are properly formatted
+      .replace(/<!\[CDATA\[\s*([\s\S]*?)\s*\]\]>/g, "<![CDATA[$1]]>");
+
+    console.log("✅ XML validation and fixing complete");
+    return fixed;
+  }
+
+  /**
+   * Create new Confluence page - EXACT copy logic from createPageFromGeneratedContent
+   * @param {string} title - Page title
+   * @param {string} fullStorageFormat - Page content (storage format)
+   * @param {string} spaceKey - Space key
+   * @param {string} parentPageId - Parent page ID (optional)
+   * @returns {Promise<void>} No return value, same as createPageFromGeneratedContent
+   */
+  static async createPage(
+    title,
+    fullStorageFormat,
+    spaceKey,
+    parentPageId = null
+  ) {
+    try {
+      console.log("🔄 Creating page from generated content...");
+
+      // Step 0: Validate and clean title
+      const cleanTitle = this.validateAndCleanTitle(title);
+      console.log("📋 Original title:", title);
+      console.log("📋 Clean title:", cleanTitle);
+      console.log("📋 Space:", spaceKey);
+      console.log("📋 Content length:", fullStorageFormat.length);
+
+      // Step 0.5: Ensure UTF-8 encoding
+      const utf8Content = this.ensureUtf8Encoding(fullStorageFormat);
+      console.log("🔤 UTF-8 validation complete");
+
+      // Show content preview for debugging
+      console.log("📄 Content preview (first 200 chars):");
+      console.log(utf8Content.substring(0, 200));
+
+      // Step 1: Enhanced content cleanup with Vietnamese support
+      console.log("🧹 Starting enhanced content cleanup...");
+      let processedContent = this.basicContentCleanup(utf8Content);
+
+      // Step 2: Advanced HTML sanitization and validation
+      console.log("🔬 Performing advanced HTML sanitization...");
+      processedContent = this.advancedHTMLSanitization(processedContent);
+
+      // Step 3: Convert all macros to mermaid-cloud macros
+      console.log("🔄 Converting macros to mermaid-cloud...");
+      processedContent = this.convertToMermaidCloudMacros(processedContent);
+
+      const finalContent = processedContent;
+      console.log("✅ Content processing complete");
+      console.log("📄 Final content length:", finalContent.length);
+      console.log("📄 Final content preview (first 200 chars):");
+      console.log(finalContent.substring(0, 200));
+
+      // Create the page payload with clean title
+      const createPayload = {
         type: "page",
-        title,
+        title: cleanTitle.trim() + "-" + Date.now(), // Use clean title with timestamp
         space: { key: spaceKey },
         body: {
           storage: {
-            value: content,
+            value: finalContent,
             representation: "storage",
           },
         },
       };
 
-      if (parentId) {
-        payload.ancestors = [{ id: parentId }];
+      // Add parent page if specified
+      if (parentPageId) {
+        createPayload.ancestors = [{ id: parentPageId }];
+        console.log("📁 Setting parent page ID:", parentPageId);
       }
 
+      console.log("📤 Sending page creation request...");
       const response = await fetch("/rest/api/content", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/json; charset=utf-8",
+          Accept: "application/json",
+          "X-Atlassian-Token": "no-check",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(createPayload),
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to create page: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error("❌ Page creation failed:", errorText);
+
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.message) {
+            errorMessage = errorJson.message;
+          }
+
+          if (errorJson.errors && Array.isArray(errorJson.errors)) {
+            const detailedErrors = errorJson.errors
+              .map(
+                (err) =>
+                  `${err.field || "Unknown field"}: ${err.message || err}`
+              )
+              .join("\n");
+            errorMessage += `\n\nDetailed errors:\n${detailedErrors}`;
+          }
+        } catch (parseError) {
+          console.warn("Could not parse error response as JSON");
+          errorMessage += `\n\nRaw error: ${errorText}`;
+        }
+
+        throw new Error(errorMessage);
       }
 
-      return await response.json();
+      const result = await response.json();
+      console.log("✅ Page created successfully!");
+      console.log("📄 Page ID:", result.id);
+      console.log("🔗 Page URL:", result._links?.webui);
+
+      let finalMessage = `✅ Tạo tài liệu thành công!\n\nTiêu đề: ${result.title}\nPage ID: ${result.id}`;
+      const extractedDiagrams = getDiagramConfluenceStyles(fullStorageFormat);
+      console.log(
+        `📊 Extracted ${extractedDiagrams.length} diagrams from content`
+      );
+      // Process and save diagrams after page creation
+      if (extractedDiagrams.length > 0) {
+        console.log("🎨 Processing extracted diagrams...");
+        const diagramResult = await processAndSaveDiagrams(
+          result.id,
+          extractedDiagrams
+        );
+
+        // Add diagram processing result to message
+        if (diagramResult.total > 0) {
+          finalMessage += `\n\n📊 Diagrams: ${diagramResult.success}/${diagramResult.total} saved successfully`;
+
+          if (diagramResult.errors.length > 0) {
+            finalMessage += `\n⚠️ Diagram errors:\n${diagramResult.errors.join(
+              "\n"
+            )}`;
+          }
+        }
+      }
+
+      // Show final result after everything is complete
+      if (typeof window !== "undefined" && window["KToolNotificationUtils"]) {
+        window["KToolNotificationUtils"].success(
+          "Trang đã được tạo thành công!",
+          finalMessage.replace(/^✅\s*/, "")
+        );
+      }
+
+      if (result._links?.webui) {
+        const fullUrl = `${window.location.origin}${result._links.webui}`;
+        window.open(fullUrl, "_blank");
+      }
     } catch (error) {
-      console.error("Error creating page:", error);
+      console.error("❌ Error creating page:", error);
+
+      let userMessage = "Lỗi khi tạo trang Confluence.";
+
+      if (error instanceof Error) {
+        if (error.message.includes("validation failed")) {
+          userMessage = `❌ Nội dung không hợp lệ:\n\n${error.message}`;
+        } else if (error.message.includes("HTTP 400")) {
+          userMessage =
+            "❌ Dữ liệu không hợp lệ. Vui lòng kiểm tra lại nội dung.";
+        } else if (error.message.includes("HTTP 401")) {
+          userMessage = "❌ Không có quyền truy cập. Vui lòng đăng nhập lại.";
+        } else if (error.message.includes("HTTP 403")) {
+          userMessage = "❌ Không có quyền tạo trang trong space này.";
+        } else {
+          userMessage = `❌ ${error.message}`;
+        }
+      }
+
+      if (typeof window !== "undefined" && window["KToolNotificationUtils"]) {
+        window["KToolNotificationUtils"].error(
+          "Lỗi tạo trang",
+          userMessage.replace(/^❌\s*/, "")
+        );
+      }
       throw error;
     }
   }

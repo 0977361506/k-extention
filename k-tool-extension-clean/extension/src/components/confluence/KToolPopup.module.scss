@@ -1,0 +1,567 @@
+/* Modern K-Tool Popup - Clean 2-Layer Design */
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(8px);
+    z-index: 999998;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease-out;
+    pointer-events: auto;
+}
+
+.fullscreenOverlay {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 999999 !important;
+    display: flex !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    pointer-events: auto !important;
+}
+
+/* Alternative approach - create a backdrop that blocks all interactions */
+.fullscreenOverlay::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: transparent;
+    z-index: -1;
+    pointer-events: auto;
+}
+
+.popup {
+    width: 95%;
+    max-width: 1200px;
+    height: 90vh;
+    max-height: 800px;
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.1),
+        0 8px 24px rgba(0, 0, 0, 0.06);
+    animation: slideUp 0.3s ease-out;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.popup.dark {
+    background: #1a1b23;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.3),
+        0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.popup.light {
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    color: #1a1b23;
+}
+
+.fullscreen {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    z-index: 999999 !important;
+    pointer-events: auto !important;
+    transform: none !important;
+    
+    // Enhanced fullscreen experience
+    background: var(--background-primary, #f8fafc) !important;
+    backdrop-filter: none !important;
+    
+    // Smooth transition to fullscreen
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    
+    // Ensure no scrolling issues
+    overflow: hidden !important;
+    
+    // Dark mode support
+    &.dark {
+      background: var(--background-dark, #1a1a1a) !important;
+    }
+}
+
+/* Ensure popup content stays on top and interactive */
+.fullscreen {
+    isolation: isolate;
+    contain: layout style paint;
+}
+
+/* Block page scroll when fullscreen */
+.fullscreenOverlay {
+    touch-action: none;
+    -webkit-overflow-scrolling: auto;
+}
+
+/* Header Layer */
+.header {
+    height: 60px;
+    padding: 0 24px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(249, 250, 251, 0.8);
+    backdrop-filter: blur(20px);
+    flex-shrink: 0;
+}
+
+.dark .header {
+    background: rgba(17, 18, 24, 0.8);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.headerLeft {
+    display: flex;
+    align-items: center;
+    flex: 1;
+}
+
+.titleContainer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.appIcon {
+    font-size: 24px;
+    animation: float 3s ease-in-out infinite;
+}
+
+.titleInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.subtitle {
+    font-size: 12px;
+    opacity: 0.6;
+    font-weight: 400;
+}
+
+.headerRight {
+    display: flex;
+    align-items: center;
+}
+
+.actionButtons {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.headerButton {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    color: inherit;
+}
+
+.headerButton:hover {
+    background: rgba(0, 0, 0, 0.05);
+    transform: translateY(-1px);
+}
+
+.dark .headerButton:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.headerButton.active {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+.headerButton.closeButton:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.headerButton.disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+
+/* Content Layer */
+.content {
+    flex: 1;
+    overflow: hidden;
+    background: #ffffff;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fullscreen .content {
+    width: 100% !important;
+    height: calc(100% - 60px) !important;
+    overflow-y: auto !important;
+}
+
+.dark .content {
+    background: #1a1b23;
+}
+
+/* Settings View */
+.settingsView {
+    padding: 32px;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.settingsContent {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.settingSection {
+    margin-bottom: 32px;
+    padding: 24px;
+    background: rgba(249, 250, 251, 0.5);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.settingSection:hover {
+    background: rgba(249, 250, 251, 0.8);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.dark .settingSection {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.dark .settingSection:hover {
+    background: rgba(255, 255, 255, 0.04);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.settingSection h3 {
+    margin: 0 0 16px 0;
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.actionButton {
+    padding: 12px 24px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: #ffffff;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.actionButton:hover {
+    background: rgba(59, 130, 246, 0.05);
+    border-color: rgba(59, 130, 246, 0.2);
+    transform: translateY(-1px);
+}
+
+.dark .actionButton {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+}
+
+.dark .actionButton:hover {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.actionButton.darkActive {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.3);
+    color: #3b82f6;
+}
+
+.actionButton.activeButton {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.3);
+    color: #3b82f6;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(40px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-3px);
+    }
+}
+
+/* Smooth Fullscreen Animations */
+@keyframes expandToFullscreen {
+    from {
+        width: 95%;
+        height: 90vh;
+        border-radius: 12px;
+        transform: scale(1);
+    }
+    to {
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+        transform: scale(1);
+    }
+}
+
+@keyframes contractFromFullscreen {
+    from {
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+        transform: scale(1);
+    }
+    to {
+        width: 95%;
+        height: 90vh;
+        border-radius: 12px;
+        transform: scale(1);
+    }
+}
+
+@keyframes fadeToTransparent {
+    from {
+        background: rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(8px);
+    }
+    to {
+        background: transparent;
+        backdrop-filter: none;
+    }
+}
+
+@keyframes fadeToBlur {
+    from {
+        background: transparent;
+        backdrop-filter: none;
+    }
+    to {
+        background: rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(8px);
+    }
+}
+
+/* Enhanced Fullscreen States */
+.popup.enteringFullscreen {
+    animation: expandToFullscreen 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.popup.exitingFullscreen {
+    animation: contractFromFullscreen 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.overlay.enteringFullscreen {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    animation: fadeToTransparent 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.overlay.exitingFullscreen {
+    animation: fadeToBlur 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Performance optimizations for smooth transitions */
+.transitioning {
+    will-change: width, height, border-radius, transform !important;
+    backface-visibility: hidden !important;
+    perspective: 1000px !important;
+}
+
+/* Improved fullscreen transition performance */
+.popup.transitioning {
+    transform-origin: center center !important;
+    contain: layout style paint !important;
+}
+
+/* Fullscreen transition indicator */
+.popup.transitioning::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    z-index: 1000;
+    animation: progressBar 0.4s ease-out;
+}
+
+@keyframes progressBar {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(0);
+    }
+}
+
+/* Hardware acceleration for smooth animations */
+.popup, .overlay {
+    transform: translateZ(0);
+    will-change: transform, opacity;
+}
+
+/* Smooth scrolling in fullscreen */
+.fullscreen .content {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Improved focus styles for accessibility */
+.headerButton:focus-visible {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
+
+.fullscreen .headerButton:focus-visible {
+    outline-color: rgba(102, 126, 234, 0.8);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .popup {
+        width: 100%;
+        height: 100vh;
+        max-height: 100vh;
+        border-radius: 0;
+        border: none;
+    }
+    
+    .header {
+        height: 56px;
+        padding: 0 16px;
+    }
+    
+    .settingsView {
+        padding: 20px;
+    }
+    
+    .settingSection {
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .headerButton {
+        width: 32px;
+        height: 32px;
+        font-size: 12px;
+    }
+    
+    .title {
+        font-size: 14px;
+    }
+    
+    .subtitle {
+        font-size: 11px;
+    }
+    
+    .actionButtons {
+        gap: 2px;
+    }
+}
+
+/* Fix pointer events for fullscreen mode */
+.fullscreen, 
+.fullscreen * {
+    pointer-events: auto !important;
+}
+
+.fullscreenOverlay,
+.fullscreenOverlay * {
+    pointer-events: auto !important;
+}
+
+/* Ensure popup content is interactive */
+.popup {
+    pointer-events: auto !important;
+}
+
+.popup * {
+    pointer-events: auto !important;
+}
+
+/* Block interactions with elements behind popup */
+body:has(.fullscreenOverlay) {
+    overflow: hidden !important;
+    pointer-events: none !important;
+}
+
+body:has(.fullscreenOverlay) .overlay,
+body:has(.fullscreenOverlay) .popup,
+body:has(.fullscreenOverlay) .popup * {
+    pointer-events: auto !important;
+}
