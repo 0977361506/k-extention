@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confluence Mermaid AI Chat - Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+        }
+        
+        .diagram-section {
+            margin: 40px 0;
+            padding: 20px;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .diagram-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 2px dashed #007bff;
+            text-align: center;
+        }
+        
+        .diagram-container::before {
+            content: "👆 Click on this diagram to test AI Chat";
+            display: block;
+            color: #007bff;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        
+        .instructions {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+            margin: 20px 0;
+        }
+        
+        .test-checklist {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🤖 Confluence Mermaid AI Chat</h1>
+        <p>Demo page để test extension chat với AI về Mermaid diagrams</p>
+    </div>
+
+    <div class="instructions">
+        <h3>📋 Hướng dẫn test:</h3>
+        <ol>
+            <li>Đảm bảo extension đã được cài đặt và enabled</li>
+            <li>Reload extension trong chrome://extensions/ nếu cần</li>
+            <li>Refresh trang này</li>
+            <li>Click vào bất kỳ Mermaid diagram nào bên dưới</li>
+            <li>Popup chat sẽ xuất hiện</li>
+            <li>Nhập prompt và test AI response</li>
+        </ol>
+    </div>
+
+    <div class="diagram-section">
+        <h2>🔄 Flowchart Diagram</h2>
+        <div class="diagram-container">
+            <div class="mermaid">
+                graph TD
+                    A[Start] --> B{Decision}
+                    B -->|Yes| C[Process 1]
+                    B -->|No| D[Process 2]
+                    C --> E[End]
+                    D --> E
+            </div>
+        </div>
+    </div>
+
+    <div class="diagram-section">
+        <h2>📊 Sequence Diagram</h2>
+        <div class="diagram-container">
+            <div class="mermaid">
+                sequenceDiagram
+                    participant U as User
+                    participant E as Extension
+                    participant AI as AI Server
+                    U->>E: Click on Mermaid
+                    E->>U: Show Chat Popup
+                    U->>E: Enter Prompt
+                    E->>AI: Send Request
+                    AI-->>E: AI Response
+                    E-->>U: Display Result
+            </div>
+        </div>
+    </div>
+
+    <div class="diagram-section">
+        <h2>🏗️ Class Diagram</h2>
+        <div class="diagram-container">
+            <div class="mermaid">
+                classDiagram
+                    class MermaidAIChat {
+                        +currentMermaidContent: string
+                        +isPopupOpen: boolean
+                        +handleClick()
+                        +showChatPopup()
+                        +sendMessage()
+                        +callAI()
+                    }
+                    class ApiClient {
+                        +editDiagram()
+                        +validateUserPrompt()
+                        +validateDiagramContent()
+                        +getErrorMessage()
+                    }
+                    MermaidAIChat --> ApiClient
+            </div>
+        </div>
+    </div>
+
+    <div class="diagram-section">
+        <h2>🔧 Confluence Structured Macro (Simulated)</h2>
+        <div class="diagram-container">
+            <ac:structured-macro ac:name="mermaid" ac:schema-version="1">
+                <ac:parameter ac:name="code">
+graph LR
+    User[User] --> Click[Click Diagram]
+    Click --> Popup[AI Chat Popup]
+    Popup --> Prompt[Enter Prompt]
+    Prompt --> API[AI API Call]
+    API --> Response[AI Response]
+    Response --> Update[Diagram Suggestions]
+                </ac:parameter>
+            </ac:structured-macro>
+        </div>
+        <p><em>This simulates how Mermaid appears in actual Confluence pages</em></p>
+    </div>
+
+    <div class="test-checklist">
+        <h3>🧪 Test Checklist:</h3>
+        <ul>
+            <li>☐ Extension loads without errors</li>
+            <li>☐ Click on flowchart shows popup</li>
+            <li>☐ Click on sequence diagram shows popup</li>
+            <li>☐ Click on class diagram shows popup</li>
+            <li>☐ Click on structured macro shows popup</li>
+            <li>☐ Popup has proper styling</li>
+            <li>☐ Can enter prompt and click Send</li>
+            <li>☐ Shows loading state when processing</li>
+            <li>☐ Displays AI response or error message</li>
+            <li>☐ Can close popup and clear messages</li>
+            <li>☐ Multiple diagrams work independently</li>
+        </ul>
+    </div>
+
+    <div class="instructions">
+        <h3>🔧 Debug Commands:</h3>
+        <p>Open browser console and try these commands:</p>
+        <ul>
+            <li><code>console.log("Extension loaded:", !!window.mermaidAIChat);</code></li>
+            <li><code>document.querySelectorAll('.mermaid, svg[id*="mermaid"]');</code></li>
+            <li><code>document.getElementById('mermaid-ai-chat-popup');</code></li>
+        </ul>
+    </div>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            securityLevel: 'loose'
+        });
+
+        // Add debugging and visual enhancements
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🎯 Demo page loaded - Mermaid AI Chat should be active');
+            
+            // Add visual styling to structured macro
+            const structuredMacro = document.querySelector('ac\\:structured-macro[ac\\:name="mermaid"]');
+            if (structuredMacro) {
+                structuredMacro.style.cursor = 'pointer';
+                structuredMacro.style.border = '2px dashed #28a745';
+                structuredMacro.style.padding = '10px';
+                structuredMacro.style.borderRadius = '8px';
+                structuredMacro.style.display = 'block';
+                structuredMacro.style.margin = '10px 0';
+                structuredMacro.style.backgroundColor = '#f8f9fa';
+                
+                // Add visual content for the structured macro
+                const codeParam = structuredMacro.querySelector('ac\\:parameter[ac\\:name="code"]');
+                if (codeParam) {
+                    const code = codeParam.textContent.trim();
+                    const preElement = document.createElement('pre');
+                    preElement.style.background = '#fff';
+                    preElement.style.padding = '10px';
+                    preElement.style.borderRadius = '4px';
+                    preElement.style.fontSize = '12px';
+                    preElement.style.border = '1px solid #dee2e6';
+                    preElement.textContent = code;
+                    structuredMacro.appendChild(preElement);
+                }
+            }
+
+            // Add click counter for testing
+            let clickCount = 0;
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.mermaid') || e.target.closest('ac\\:structured-macro[ac\\:name="mermaid"]')) {
+                    clickCount++;
+                    console.log(`🎯 Mermaid diagram clicked ${clickCount} times`);
+                }
+            });
+
+            // Check for extension periodically
+            let checkCount = 0;
+            const checkInterval = setInterval(() => {
+                checkCount++;
+                if (window.mermaidAIChat) {
+                    console.log('✅ Mermaid AI Chat extension detected!');
+                    clearInterval(checkInterval);
+                } else if (checkCount > 10) {
+                    console.log('⚠️ Mermaid AI Chat extension not found after 5 seconds');
+                    console.log('Make sure the extension is installed and enabled');
+                    clearInterval(checkInterval);
+                }
+            }, 500);
+        });
+    </script>
+</body>
+</html>
