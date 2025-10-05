@@ -3,6 +3,7 @@
  * Handles AI API calls for Mermaid diagram modifications
  */
 import { ApiClient } from "../../shared/api.js";
+import { API_URLS } from "../../shared/constants.js";
 
 export class MermaidAIService {
   constructor() {
@@ -29,25 +30,45 @@ export class MermaidAIService {
       throw new Error(diagramValidation.error);
     }
 
-    // Prepare payload
+    // Prepare payload for new API
     const payload = {
-      diagram_content: diagramContent,
-      user_prompt: userPrompt,
-      context: "mermaid_diagram_editing",
+      diagram_code: diagramContent,
+      prompt: userPrompt,
     };
 
     console.log("📤 Sending AI request:", payload);
 
     try {
-      // Call AI API
-      const response = await this.callAI(payload);
-      
-      if (!response || !response.edited_diagram) {
-        throw new Error("Invalid AI response format - missing edited_diagram");
+      // Call new AI API using constants
+      const response = await fetch(API_URLS.EDIT_MERMAID, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          errorText || `HTTP ${response.status}: ${response.statusText}`
+        );
+      }
+
+      // API returns plain text mermaid code
+      const newMermaidCode = await response.text();
+
+      if (!newMermaidCode || !newMermaidCode.trim()) {
+        throw new Error("Empty response from AI API");
       }
 
       console.log("✅ AI response received successfully");
-      return response;
+
+      // Return in expected format for compatibility
+      return {
+        success: true,
+        edited_diagram: newMermaidCode.trim(),
+      };
     } catch (error) {
       console.error("❌ AI API error:", error);
       throw error;
@@ -82,13 +103,13 @@ export class MermaidAIService {
       return data;
     } catch (error) {
       console.error("❌ AI API call failed:", error);
-      
+
       // Return mock response for development/testing
       if (error.message.includes("fetch")) {
         console.log("🔧 Using mock AI response for development");
         return this.getMockResponse(payload);
       }
-      
+
       throw error;
     }
   }
@@ -102,11 +123,11 @@ export class MermaidAIService {
     // Simple mock: add a comment to the diagram
     const originalDiagram = payload.diagram_content;
     const modifiedDiagram = `%% Modified by AI: ${payload.user_prompt}\n${originalDiagram}`;
-    
+
     return {
       success: true,
       edited_diagram: modifiedDiagram,
-      explanation: `I've added a comment to your diagram based on your request: "${payload.user_prompt}"`
+      explanation: `I've added a comment to your diagram based on your request: "${payload.user_prompt}"`,
     };
   }
 
@@ -119,27 +140,28 @@ export class MermaidAIService {
     if (!prompt || !prompt.trim()) {
       return {
         isValid: false,
-        error: "Please enter a prompt describing how you want to modify the diagram"
+        error:
+          "Please enter a prompt describing how you want to modify the diagram",
       };
     }
 
     if (prompt.trim().length < 3) {
       return {
         isValid: false,
-        error: "Prompt is too short. Please provide more details."
+        error: "Prompt is too short. Please provide more details.",
       };
     }
 
     if (prompt.length > 1000) {
       return {
         isValid: false,
-        error: "Prompt is too long. Please keep it under 1000 characters."
+        error: "Prompt is too long. Please keep it under 1000 characters.",
       };
     }
 
     return {
       isValid: true,
-      error: null
+      error: null,
     };
   }
 
@@ -152,31 +174,40 @@ export class MermaidAIService {
     if (!content || !content.trim()) {
       return {
         isValid: false,
-        error: "No diagram content found. Please select a Mermaid diagram first."
+        error:
+          "No diagram content found. Please select a Mermaid diagram first.",
       };
     }
 
     // Basic Mermaid syntax validation
     const trimmed = content.trim();
     const validStarters = [
-      'graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 
-      'stateDiagram', 'erDiagram', 'journey', 'gantt', 'pie'
+      "graph",
+      "flowchart",
+      "sequenceDiagram",
+      "classDiagram",
+      "stateDiagram",
+      "erDiagram",
+      "journey",
+      "gantt",
+      "pie",
     ];
-    
-    const hasValidStarter = validStarters.some(starter => 
+
+    const hasValidStarter = validStarters.some((starter) =>
       trimmed.toLowerCase().startsWith(starter.toLowerCase())
     );
-    
+
     if (!hasValidStarter) {
       return {
         isValid: false,
-        error: "Invalid Mermaid diagram format. Please ensure it starts with a valid diagram type."
+        error:
+          "Invalid Mermaid diagram format. Please ensure it starts with a valid diagram type.",
       };
     }
 
     return {
       isValid: true,
-      error: null
+      error: null,
     };
   }
 
@@ -189,15 +220,15 @@ export class MermaidAIService {
     if (error.message.includes("fetch")) {
       return "Unable to connect to AI service. Please check your internet connection.";
     }
-    
+
     if (error.message.includes("HTTP 429")) {
       return "Too many requests. Please wait a moment and try again.";
     }
-    
+
     if (error.message.includes("HTTP 500")) {
       return "AI service is temporarily unavailable. Please try again later.";
     }
-    
+
     return error.message || "An unexpected error occurred. Please try again.";
   }
 }

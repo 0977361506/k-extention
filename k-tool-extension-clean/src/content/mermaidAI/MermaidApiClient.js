@@ -2,6 +2,7 @@
  * Mermaid API Client
  * Handles API calls to fetch Mermaid diagram code from Confluence
  */
+import { CONFLUENCE_API_URLS } from "../../shared/constants.js";
 export class MermaidApiClient {
   /**
    * Extract page ID from current URL
@@ -168,7 +169,7 @@ export class MermaidApiClient {
     try {
       console.log("🌐 Fetching Mermaid code from API...", { pageId, filename });
 
-      const apiUrl = `http://localhost:8090/rest/mermaidrest/1.0/mermaid/diagram?ceoId=${pageId}&filename=${filename}`;
+      const apiUrl = `${CONFLUENCE_API_URLS.MERMAID_DIAGRAM}?ceoId=${pageId}&filename=${filename}`;
 
       console.log("📡 API URL:", apiUrl);
 
@@ -181,8 +182,7 @@ export class MermaidApiClient {
           Connection: "keep-alive",
           "Content-Type": "application/json; charset=utf-8",
           Pragma: "no-cache",
-          Referer:
-            "http://localhost:8090/plugins/mermaid-cloud/editMermaidDiagram.action",
+          Referer: CONFLUENCE_API_URLS.MERMAID_EDIT_REFERER,
           "Sec-Fetch-Dest": "empty",
           "Sec-Fetch-Mode": "cors",
           "Sec-Fetch-Site": "same-origin",

@@ -2,17 +2,30 @@
 export const EXTENSION_SETTINGS_KEY = "extensionSettings";
 
 // API URLs
-const isLocal = true;
+const isLocal =
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1" ||
+  window.location.hostname.includes("localhost");
 const rootUrl = isLocal
   ? "http://localhost:5001"
   : "https://gendoc.thangnotes.dev";
+
+// Confluence API URLs (always localhost:8090 for Confluence)
+const confluenceBaseUrl = "http://localhost:8090";
 
 export const API_URLS = {
   GEN_DOC: `${rootUrl}/api/generate-full-confluence-doc`,
   GEN_DOC_STATUS: `${rootUrl}/api/generate-status`,
   GEN_DOC_RESULT: `${rootUrl}/api/generate-result`,
   EDIT_DIAGRAM: `${rootUrl}/api/edit-diagram`,
+  EDIT_MERMAID: `${rootUrl}/api/edit-mermaid`,
   EDIT_TEXT: `${rootUrl}/api/edit-text`,
+};
+
+export const CONFLUENCE_API_URLS = {
+  MERMAID_DIAGRAM: `${confluenceBaseUrl}/rest/mermaidrest/1.0/mermaid/diagram`,
+  MERMAID_SAVE: `${confluenceBaseUrl}/rest/mermaidrest/1.0/mermaid/save`,
+  MERMAID_EDIT_REFERER: `${confluenceBaseUrl}/plugins/mermaid-cloud/editMermaidDiagram.action`,
 };
 
 // Default settings

@@ -3,6 +3,7 @@ import { MermaidExtractor } from "./MermaidExtractor.js";
 import { MermaidPreview } from "./MermaidPreview.js";
 import { MermaidAIService } from "./MermaidAIService.js";
 import { MermaidApiClient } from "./MermaidApiClient.js";
+import { CONFLUENCE_API_URLS } from "../../shared/constants.js";
 
 export class MermaidAIChat {
   constructor($) {
@@ -825,6 +826,32 @@ export class MermaidAIChat {
           transition: transform 0.2s ease;
           overflow: auto;
         }
+
+        .mermaid-chat-buttons {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+        }
+
+        .mermaid-chat-save {
+          background: #28a745;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          padding: 8px 16px;
+          cursor: pointer;
+          font-size: 14px;
+          transition: background-color 0.2s;
+        }
+
+        .mermaid-chat-save:hover:not(:disabled) {
+          background: #218838;
+        }
+
+        .mermaid-chat-save:disabled {
+          background: #6c757d;
+          cursor: not-allowed;
+        }
       </style>
       <div id="mermaid-ai-chat-popup" class="mermaid-ai-chat-popup" style="display: none;">
         <div class="mermaid-ai-chat-header">
@@ -855,9 +882,14 @@ export class MermaidAIChat {
                   placeholder="💬 Describe how you want to modify the diagram..."
                   rows="2"
                 ></textarea>
-                <button id="mermaid-ai-chat-send" class="mermaid-chat-send">
-                  Send
-                </button>
+                <div class="mermaid-chat-buttons">
+                  <button id="mermaid-ai-chat-save" class="mermaid-chat-save">
+                    💾 Save
+                  </button>
+                  <button id="mermaid-ai-chat-send" class="mermaid-chat-send">
+                    Send
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -902,6 +934,7 @@ export class MermaidAIChat {
     const header = popup.querySelector(".mermaid-ai-chat-header");
     const closeBtn = popup.querySelector(".mermaid-ai-chat-close");
     const sendBtn = document.getElementById("mermaid-ai-chat-send");
+    const saveBtn = document.getElementById("mermaid-ai-chat-save");
     const input = document.getElementById("mermaid-ai-chat-input");
     const codeEditor = document.getElementById("mermaid-code-editor");
 
@@ -916,6 +949,11 @@ export class MermaidAIChat {
     // Send message
     sendBtn.addEventListener("click", () => {
       this.sendMessage();
+    });
+
+    // Save diagram
+    saveBtn.addEventListener("click", () => {
+      this.saveDiagram();
     });
 
     // Send on Enter (Ctrl+Enter for new line)
@@ -1222,6 +1260,86 @@ export class MermaidAIChat {
       sendBtn.textContent = "Send";
       input.disabled = false;
       input.focus();
+    }
+  }
+
+  /**
+   * Save the current diagram back to Confluence
+   */
+  async saveDiagram() {
+    const codeEditor = document.getElementById("mermaid-code-editor");
+    const saveBtn = document.getElementById("mermaid-ai-chat-save");
+
+    if (!codeEditor) {
+      alert("❌ Code editor not found");
+      return;
+    }
+
+    const currentCode = codeEditor.value.trim();
+    if (!currentCode) {
+      alert("⚠️ Please enter some Mermaid code first");
+      return;
+    }
+
+    // Update current content
+    this.currentMermaidContent = currentCode;
+
+    // Disable save button and show loading
+    saveBtn.disabled = true;
+    saveBtn.textContent = "💾 Saving...";
+
+    try {
+      // Get saved filename and page ID
+      const filename = MermaidApiClient.getSavedFilename();
+      const pageId = MermaidApiClient.extractPageId();
+
+      if (!filename) {
+        throw new Error(
+          "No filename found. Please click on a Mermaid image first."
+        );
+      }
+
+      if (!pageId) {
+        throw new Error("Could not extract page ID from current page.");
+      }
+
+      console.log(`💾 Saving diagram: ${filename} on page ${pageId}`);
+
+      // Call API to save the diagram
+      const response = await fetch(CONFLUENCE_API_URLS.MERMAID_SAVE, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "X-Atlassian-Token": "no-check",
+        },
+        body: JSON.stringify({
+          pageId: pageId,
+          filename: filename,
+          mermaidCode: currentCode,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API Error: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log("✅ Diagram saved successfully:", result);
+
+      // Show success message
+      alert("✅ Diagram saved successfully!");
+
+      // Optionally close the popup after successful save
+      // this.hideChatPopup();
+    } catch (error) {
+      console.error("❌ Error saving diagram:", error);
+      alert(`❌ Error saving diagram: ${error.message}`);
+    } finally {
+      // Re-enable save button
+      saveBtn.disabled = false;
+      saveBtn.textContent = "💾 Save";
     }
   }
 

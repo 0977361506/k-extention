@@ -31,6 +31,16 @@ class ConfluenceEditor {
     this.currentZoom = 1;
     this.dragOffset = { x: 0, y: 0 };
 
+    // ✅ Anti-flicker properties
+    this.isZooming = false;
+    this.zoomStep = 0.25;
+    this.minZoom = 0.25;
+    this.maxZoom = 3.0;
+
+    // ✅ Debouncing for preview updates
+    this.previewUpdateTimeout = null;
+    this.isUpdatingPreview = false; // Prevent concurrent updates
+
     // Initialize utility classes
     this.storageManager = new StorageManager();
     this.contentSynchronizer = new ContentSynchronizer();
@@ -174,9 +184,7 @@ class ConfluenceEditor {
     );
 
     DOMHelpers.addEventListener(mermaidCodeEditor, "input", () => {
-      this.updateMermaidPreview().catch((error) => {
-        console.error("❌ Error updating Mermaid preview:", error);
-      });
+      this.debouncedUpdateMermaidPreview();
     });
 
     DOMHelpers.addEventListener(aiSendBtn, "click", () => this.sendAIPrompt());
@@ -585,10 +593,8 @@ class ConfluenceEditor {
             newCode
           );
 
-          // Update preview
-          this.updateMermaidPreview().catch((error) => {
-            console.error("❌ Error updating Mermaid preview:", error);
-          });
+          // Update preview with debouncing
+          this.debouncedUpdateMermaidPreview();
 
           // Mark as modified
           this.isModified = true;
@@ -619,8 +625,43 @@ class ConfluenceEditor {
     this.currentSelectedDiagram = null;
   }
 
+  // ✅ Simple debounced update - no anti-flicker interference
+  debouncedUpdateMermaidPreview() {
+    // Only skip if actively zooming (not if just updated recently)
+    if (this.isZooming) {
+      return;
+    }
+
+    // Clear existing timeout
+    if (this.previewUpdateTimeout) {
+      clearTimeout(this.previewUpdateTimeout);
+    }
+
+    // Set new timeout
+    this.previewUpdateTimeout = setTimeout(() => {
+      if (!this.isZooming && !this.isUpdatingPreview) {
+        this.updateMermaidPreview().catch((error) => {
+          console.error("❌ Error updating Mermaid preview:", error);
+        });
+      }
+    }, 300); // Increased debounce for stability
+  }
+
   // Update mermaid preview
   async updateMermaidPreview() {
+    // ✅ Skip update if currently zooming to prevent flicker
+    if (this.isZooming) {
+      return;
+    }
+
+    // ✅ Skip if already updating to prevent concurrent updates
+    if (this.isUpdatingPreview) {
+      return;
+    }
+
+    // ✅ Set updating flag
+    this.isUpdatingPreview = true;
+
     const codeEditor = this.editorContainer.querySelector(
       "#mermaid-code-editor"
     );
@@ -634,6 +675,9 @@ class ConfluenceEditor {
         '<div class="mermaid-placeholder">Enter Mermaid code to preview</div>';
       return;
     }
+
+    // ✅ Store current zoom level
+    const currentZoom = this.currentZoom;
 
     // Update current diagram
     if (this.currentSelectedDiagram) {
@@ -652,8 +696,11 @@ class ConfluenceEditor {
       // Use MermaidRenderer to safely render the diagram
       await MermaidRenderer.renderDiagram(diagramId, code, preview);
 
-      // Apply current zoom after rendering
+      // ✅ Reapply zoom after rendering to maintain zoom level
       setTimeout(() => {
+        if (currentZoom !== 1) {
+          this.currentZoom = currentZoom;
+        }
         this.updateZoom();
       }, 100);
     } catch (error) {
@@ -664,6 +711,9 @@ class ConfluenceEditor {
           <small>${error.message}</small>
         </div>
       `;
+    } finally {
+      // ✅ Always reset updating flag
+      this.isUpdatingPreview = false;
     }
   }
 
@@ -1015,31 +1065,77 @@ class ConfluenceEditor {
     if (!saveBtn) return;
 
     if (this.isModified) {
-      DOMHelpers.setContent(saveBtn, "💾 Lưu thay đổi *");
+      DOMHelpers.setContent(saveBtn, "💾 Save *");
       saveBtn.style.background = "#28a745";
       saveBtn.title = "Có thay đổi chưa lưu";
     } else {
-      DOMHelpers.setContent(saveBtn, "💾 Lưu thay đổi");
+      DOMHelpers.setContent(saveBtn, "💾 Save");
       saveBtn.style.background = "#007bff";
-      saveBtn.title = "Lưu thay đổi";
+      saveBtn.title = "Save";
     }
+  }
+
+  // ✅ Stop all preview updates for zoom
+  stopAllPreviewUpdates() {
+    // Clear timeout
+    if (this.previewUpdateTimeout) {
+      clearTimeout(this.previewUpdateTimeout);
+      this.previewUpdateTimeout = null;
+    }
+
+    // Set flags
+    this.isZooming = true;
+    this.isUpdatingPreview = false;
   }
 
   // Zoom controls methods
   zoomIn() {
-    this.currentZoom = Math.min(this.currentZoom * 1.2, 3);
-    this.updateZoom();
+    if (this.currentZoom < this.maxZoom) {
+      this.stopAllPreviewUpdates(); // ✅ Stop updates first
+      this.currentZoom = Math.min(
+        this.currentZoom + this.zoomStep,
+        this.maxZoom
+      );
+      this.applyZoom();
+    }
   }
 
   zoomOut() {
-    this.currentZoom = Math.max(this.currentZoom / 1.2, 0.3);
-    this.updateZoom();
+    if (this.currentZoom > this.minZoom) {
+      this.stopAllPreviewUpdates(); // ✅ Stop updates first
+      this.currentZoom = Math.max(
+        this.currentZoom - this.zoomStep,
+        this.minZoom
+      );
+      this.applyZoom();
+    }
   }
 
   resetZoom() {
+    this.stopAllPreviewUpdates(); // ✅ Stop updates first
     this.currentZoom = 1;
     this.dragOffset = { x: 0, y: 0 };
+    this.applyZoom();
+  }
+
+  // ✅ Apply zoom with anti-flicker
+  applyZoom() {
+    // Set zoom flag to prevent flicker
+    this.isZooming = true;
+
+    // Clear any pending preview updates
+    if (this.previewUpdateTimeout) {
+      clearTimeout(this.previewUpdateTimeout);
+      this.previewUpdateTimeout = null;
+    }
+
+    // Apply zoom
     this.updateZoom();
+
+    // Reset zoom flag
+    setTimeout(() => {
+      this.isZooming = false;
+    }, 100);
   }
 
   updateZoom() {

@@ -11,24 +11,24 @@ export class HTMLTemplates {
       <div class="confluence-editor-container">
         <div class="confluence-editor-header">
           <h2 class="confluence-editor-title">
-            📝 Chỉnh sửa nội dung Confluence
+            📝 Edit Confluence Content
           </h2>
           <div class="confluence-editor-actions">
             <button class="editor-btn editor-btn-primary" id="editor-save-btn">
-              💾 Lưu thay đổi
+              💾 Save
             </button>
             <button class="editor-btn editor-btn-secondary" id="editor-close-btn">
-              ✕ Đóng
+              ✕ Close
             </button>
           </div>
         </div>
 
         <div class="confluence-editor-tabs">
           <button class="confluence-editor-tab active" id="content-tab">
-            📝 Chỉnh sửa nội dung
+            📝 Edit Content
           </button>
           <button class="confluence-editor-tab" id="mermaid-tab">
-            📊 Chỉnh sửa Mermaid
+            📊 Edit Mermaid Code
           </button>
         </div>
 
@@ -100,7 +100,7 @@ export class HTMLTemplates {
           <!-- Mermaid Preview (Center) -->
           <div class="mermaid-preview-pane">
             <div class="mermaid-editor-header">
-              📊 Diagram Preview
+              <span class="preview-title">📊 Diagram Preview</span>
               ${this.getZoomControlsTemplate()}
             </div>
             <div class="mermaid-editor-body">
