@@ -1,8 +1,8 @@
 // Mermaid AI Chat Service for K-Tool Extension
 import { MermaidExtractor } from "./MermaidExtractor.js";
 import { MermaidPreview } from "./MermaidPreview.js";
-import { MermaidDetector } from "./MermaidDetector.js";
 import { MermaidAIService } from "./MermaidAIService.js";
+import { MermaidApiClient } from "./MermaidApiClient.js";
 
 export class MermaidAIChat {
   constructor($) {
@@ -13,9 +13,10 @@ export class MermaidAIChat {
     // Initialize components
     this.preview = new MermaidPreview();
     this.aiService = new MermaidAIService();
-    this.detector = new MermaidDetector((element, position) => {
-      this.handleMermaidClick(element, position);
-    });
+
+    // ✅ Replace MermaidDetector with internal properties
+    this.lastClickedElement = null;
+    this.lastClickPosition = { x: 0, y: 0 };
 
     console.log("🚀 Mermaid AI Chat initializing with AJS/jQuery:", !!this.$);
     this.init();
@@ -36,8 +37,7 @@ export class MermaidAIChat {
     // Initialize preview component
     this.preview.initialize();
 
-    // Setup detection - use both new detector and old methods for compatibility
-    this.detector.setupDetection();
+    // ✅ Setup detection without MermaidDetector
     this.setupMermaidDetection();
     this.setupConfluencePageChangeDetection();
 
@@ -56,7 +56,7 @@ export class MermaidAIChat {
     console.log("🎯 Mermaid diagram clicked:", element, position);
 
     // Extract content from clicked element
-    this.currentMermaidContent = MermaidExtractor.extractFromElement(element);
+    // this.currentMermaidContent = MermaidExtractor.extractFromElement(element);
 
     // Show popup at click position
     this.showChatPopup(position.x, position.y);
@@ -65,7 +65,8 @@ export class MermaidAIChat {
   setupMermaidDetection() {
     console.log("🔍 SIMPLE: Setting up iframe click detection...");
 
-    // Chỉ setup iframe event listeners
+    // ✅ Sử dụng lại logic từ MermaidDetector thay vì duplicate code
+    // Chỉ setup iframe event listeners với logic đơn giản
     this.setupIframeEventListeners();
 
     // Setup MutationObserver để detect iframe mới (chỉ observe DOM cha)
@@ -165,30 +166,43 @@ export class MermaidAIChat {
               element: event.target,
             });
 
-            // Nếu click vào ảnh (IMG hoặc SVG) thì lưu lại
-            if (
-              event.target.tagName === "IMG" ||
-              event.target.tagName === "SVG"
-            ) {
-              console.log(
-                `🎯 SAVING: Image clicked - saving element and position`
-              );
+            console.log(
+              `🔍 IFRAME ${index} CLICK: Checking if Mermaid element...`
+            );
+            console.log(
+              `🔍 IFRAME ${index} CLICK: isMermaidElement result:`,
+              this.isMermaidElement(event.target)
+            );
 
-              // Lưu element và position trong detector
-              this.detector.lastClickedElement = event.target;
-              this.detector.lastClickPosition = {
+            // ✅ Handle click directly without MermaidDetector
+            if (this.isMermaidElement(event.target)) {
+              console.log("🎯 Mermaid element clicked:", event.target);
+
+              // Extract and save filename from image src if available
+              if (event.target.src) {
+                const filename = MermaidApiClient.extractFilename(
+                  event.target.src
+                );
+                if (filename) {
+                  MermaidApiClient.saveFilename(filename);
+                  console.log(`💾 Filename saved: ${filename}`);
+                } else {
+                  console.warn(
+                    "⚠️ Could not extract filename from src:",
+                    event.target.src
+                  );
+                }
+              }
+
+              // Save click info
+              this.lastClickedElement = event.target;
+              this.lastClickPosition = {
                 x: event.clientX + iframe.offsetLeft,
                 y: event.clientY + iframe.offsetTop,
               };
 
-              console.log(
-                `🎯 SAVED: Element:`,
-                this.detector.lastClickedElement
-              );
-              console.log(
-                `🎯 SAVED: Position:`,
-                this.detector.lastClickPosition
-              );
+              // Trigger callback
+              this.handleMermaidClick(event.target, this.lastClickPosition);
             }
           };
 
@@ -396,7 +410,7 @@ export class MermaidAIChat {
     aiButton.innerHTML = `<span class="icon"></span><span class="panel-button-text">AI</span>`;
 
     // Thêm sự kiện click
-    aiButton.addEventListener("click", (e) => {
+    aiButton.addEventListener("click", async (e) => {
       e.preventDefault();
 
       // ✅ Skip if ConfluenceEditor popup is open to avoid conflict
@@ -407,27 +421,60 @@ export class MermaidAIChat {
         return;
       }
 
-      console.log("🤖 AI Button clicked - checking saved element...");
+      console.log("🤖 AI Button clicked - fetching Mermaid code...");
 
-      // Get last clicked element and position from detector
-      const lastClickedElement = this.detector.getLastClickedElement();
-      const lastClickPosition = this.detector.getLastClickPosition();
+      // Get last clicked element and position
+      const lastClickedElement = this.lastClickedElement;
+      const lastClickPosition = this.lastClickPosition;
 
+      console.log(
+        "🔍 DEBUG AI BUTTON: this.lastClickedElement:",
+        this.lastClickedElement
+      );
+      console.log(
+        "🔍 DEBUG AI BUTTON: this.lastClickPosition:",
+        this.lastClickPosition
+      );
       console.log(
         "🔍 DEBUG AI BUTTON: lastClickedElement:",
         lastClickedElement
       );
       console.log("🔍 DEBUG AI BUTTON: lastClickPosition:", lastClickPosition);
+      console.log(
+        "🔍 DEBUG AI BUTTON: Position check:",
+        lastClickPosition &&
+          (lastClickPosition.x !== 0 || lastClickPosition.y !== 0)
+      );
 
-      if (lastClickedElement && lastClickPosition) {
+      if (
+        lastClickedElement &&
+        lastClickPosition &&
+        (lastClickPosition.x !== 0 || lastClickPosition.y !== 0)
+      ) {
         console.log(
-          "🤖 Found saved element - showing chat popup at position:",
-          lastClickPosition
+          "🤖 Found saved element - fetching Mermaid code from API..."
         );
-        console.log("🤖 Saved element:", lastClickedElement);
 
-        // Gọi showChatPopup với tọa độ đã lưu
-        this.showChatPopup(lastClickPosition.x, lastClickPosition.y);
+        try {
+          // Show loading state
+          const loadingMessage = "🔄 Fetching Mermaid diagram code...";
+          console.log(loadingMessage);
+
+          // Fetch Mermaid code from API using saved filename and page ID
+          const mermaidCodeResponse =
+            await MermaidApiClient.fetchMermaidCodeFromSaved();
+          const mermaidCode = mermaidCodeResponse.data;
+          console.log("✅ Mermaid code fetched successfully:", mermaidCode);
+
+          // Update current content with fetched code
+          this.currentMermaidContent = mermaidCode;
+
+          // Show chat popup with fetched content
+          this.showChatPopup(lastClickPosition.x, lastClickPosition.y);
+        } catch (error) {
+          console.error("❌ Error fetching Mermaid code:", error);
+          alert(`❌ Error fetching Mermaid code: ${error.message}`);
+        }
       } else {
         console.log(
           "⚠️ No saved element found - please click on an image first"
@@ -508,6 +555,55 @@ export class MermaidAIChat {
     });
 
     console.log("✅ ConfluenceEditor monitoring setup completed");
+  }
+
+  /**
+   * Check if element is a Mermaid diagram
+   * @param {HTMLElement} element - Element to check
+   * @returns {boolean} True if element is Mermaid-related
+   */
+  isMermaidElement(element) {
+    if (
+      !element ||
+      !element.nodeType ||
+      element.nodeType !== Node.ELEMENT_NODE
+    ) {
+      return false;
+    }
+
+    console.log("🔍 isMermaidElement: Checking element:", {
+      tag: element.tagName,
+      src: element.src || "N/A",
+      className: element.className || "N/A",
+      id: element.id || "N/A",
+    });
+
+    // Check for various Mermaid indicators
+    const checks = [
+      // Image with mermaid in src
+      element.tagName === "IMG" &&
+        element.src &&
+        element.src.includes("mermaid"),
+      // SVG with mermaid in id
+      element.tagName === "SVG" && element.id && element.id.includes("mermaid"),
+      // Element with mermaid class
+      element.classList && element.classList.contains("mermaid"),
+      // Element with mermaid data attribute
+      element.getAttribute &&
+        element.getAttribute("data-macro-name") === "mermaid",
+      // Confluence structured macro
+      element.tagName === "AC:STRUCTURED-MACRO" &&
+        element.getAttribute("ac:name") === "mermaid",
+      // Any image (for broader detection)
+      element.tagName === "IMG" && element.src,
+      // Any SVG
+      element.tagName === "SVG",
+    ];
+
+    const result = checks.some((check) => check);
+    console.log("🔍 isMermaidElement: Result:", result);
+
+    return result;
   }
 
   createPopupUI() {
@@ -804,112 +900,6 @@ export class MermaidAIChat {
 
     // Use preview component to update
     await this.preview.updatePreview(code);
-  }
-
-  /**
-   * Extract Mermaid content from the clicked element
-   */
-  extractMermaidContentFromElement() {
-    console.log("🔍 Extracting Mermaid content from clicked element...");
-
-    // Get last clicked element from detector
-    const lastClickedElement = this.detector.getLastClickedElement();
-
-    if (!lastClickedElement) {
-      console.warn("⚠️ No clicked element found");
-      this.currentMermaidContent = "";
-      return;
-    }
-
-    try {
-      // Try to find Mermaid content in various ways
-      let content = "";
-
-      // Method 1: Look for structured macro with mermaid
-      const mermaidMacro = lastClickedElement.closest(
-        'ac\\:structured-macro[ac\\:name="mermaid"], [data-macro-name="mermaid"]'
-      );
-      if (mermaidMacro) {
-        console.log("🎯 Found Mermaid macro:", mermaidMacro);
-
-        // Try to find parameter with code
-        const codeParam = mermaidMacro.querySelector(
-          'ac\\:parameter[ac\\:name="code"], [data-parameter-name="code"]'
-        );
-        if (codeParam) {
-          content = codeParam.textContent || codeParam.innerText || "";
-          console.log(
-            "✅ Extracted from code parameter:",
-            content.substring(0, 50) + "..."
-          );
-        }
-      }
-
-      // Method 2: Look for data attributes
-      if (!content && lastClickedElement.dataset) {
-        if (lastClickedElement.dataset.mermaidCode) {
-          content = lastClickedElement.dataset.mermaidCode;
-          console.log(
-            "✅ Extracted from data-mermaid-code:",
-            content.substring(0, 50) + "..."
-          );
-        }
-      }
-
-      // Method 3: Look in parent elements for text content
-      if (!content) {
-        let parent = lastClickedElement.parentElement;
-        let attempts = 0;
-        while (parent && attempts < 5) {
-          const textContent = parent.textContent || parent.innerText || "";
-          if (
-            textContent.includes("graph") ||
-            textContent.includes("flowchart") ||
-            textContent.includes("sequenceDiagram")
-          ) {
-            content = textContent.trim();
-            console.log(
-              "✅ Extracted from parent element:",
-              content.substring(0, 50) + "..."
-            );
-            break;
-          }
-          parent = parent.parentElement;
-          attempts++;
-        }
-      }
-
-      // Method 4: Default fallback
-      if (!content) {
-        content = "graph TD\n    A[Start] --> B[End]";
-        console.log("⚠️ Using fallback Mermaid content");
-      }
-
-      this.currentMermaidContent = content;
-
-      // Populate code editor
-      const codeEditor = document.getElementById("mermaid-code-editor");
-      if (codeEditor) {
-        codeEditor.value = content;
-        // Trigger preview update
-        this.updateMermaidPreview();
-      }
-
-      console.log("✅ Mermaid content extraction completed:", {
-        length: content.length,
-        preview: content.substring(0, 100) + "...",
-      });
-    } catch (error) {
-      console.error("❌ Error extracting Mermaid content:", error);
-      this.currentMermaidContent = "graph TD\n    A[Start] --> B[End]";
-
-      // Populate code editor with fallback
-      const codeEditor = document.getElementById("mermaid-code-editor");
-      if (codeEditor) {
-        codeEditor.value = this.currentMermaidContent;
-        this.updateMermaidPreview();
-      }
-    }
   }
 
   hideChatPopup() {
