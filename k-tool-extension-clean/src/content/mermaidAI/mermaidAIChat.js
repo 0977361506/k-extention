@@ -18,6 +18,13 @@ export class MermaidAIChat {
     this.lastClickedElement = null;
     this.lastClickPosition = { x: 0, y: 0 };
 
+    // ✅ Zoom functionality
+    this.currentZoom = 1.0; // 100%
+    this.minZoom = 0.25; // 25%
+    this.maxZoom = 3.0; // 300%
+    this.zoomStep = 0.25; // 25% per step
+    this.isZooming = false; // Flag to prevent flicker during zoom
+
     console.log("🚀 Mermaid AI Chat initializing with AJS/jQuery:", !!this.$);
     this.init();
   }
@@ -606,10 +613,219 @@ export class MermaidAIChat {
     return result;
   }
 
+  /**
+   * Bind zoom control events
+   */
+  bindZoomControls() {
+    const zoomInBtn = document.getElementById("zoom-in-btn");
+    const zoomOutBtn = document.getElementById("zoom-out-btn");
+    const zoomResetBtn = document.getElementById("zoom-reset-btn");
+    const previewContainer = document.getElementById(
+      "mermaid-preview-container"
+    );
+
+    if (!zoomInBtn || !zoomOutBtn || !zoomResetBtn || !previewContainer) {
+      console.warn("⚠️ Zoom controls not found");
+      return;
+    }
+
+    // Zoom In
+    zoomInBtn.addEventListener("click", () => {
+      this.zoomIn();
+    });
+
+    // Zoom Out
+    zoomOutBtn.addEventListener("click", () => {
+      this.zoomOut();
+    });
+
+    // Reset Zoom
+    zoomResetBtn.addEventListener("click", () => {
+      this.resetZoom();
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener("keydown", (e) => {
+      // Only work when popup is open and not typing in input fields
+      if (
+        !this.isPopupOpen ||
+        e.target.tagName === "INPUT" ||
+        e.target.tagName === "TEXTAREA"
+      ) {
+        return;
+      }
+
+      if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        this.zoomIn();
+      } else if (e.key === "-") {
+        e.preventDefault();
+        this.zoomOut();
+      } else if (e.key === "0") {
+        e.preventDefault();
+        this.resetZoom();
+      }
+    });
+
+    // Mouse wheel zoom (Ctrl + wheel)
+    previewContainer.addEventListener("wheel", (e) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        if (e.deltaY < 0) {
+          this.zoomIn();
+        } else {
+          this.zoomOut();
+        }
+      }
+    });
+
+    console.log("✅ Zoom controls bound successfully");
+  }
+
+  /**
+   * Zoom in
+   */
+  zoomIn() {
+    if (this.currentZoom < this.maxZoom) {
+      this.currentZoom = Math.min(
+        this.currentZoom + this.zoomStep,
+        this.maxZoom
+      );
+      this.applyZoom();
+    }
+  }
+
+  /**
+   * Zoom out
+   */
+  zoomOut() {
+    if (this.currentZoom > this.minZoom) {
+      this.currentZoom = Math.max(
+        this.currentZoom - this.zoomStep,
+        this.minZoom
+      );
+      this.applyZoom();
+    }
+  }
+
+  /**
+   * Reset zoom to 100%
+   */
+  resetZoom() {
+    this.currentZoom = 1.0;
+    this.applyZoom();
+  }
+
+  /**
+   * Apply zoom to preview container
+   */
+  applyZoom() {
+    const previewContainer = document.getElementById(
+      "mermaid-preview-container"
+    );
+    const zoomDisplay = document.getElementById("zoom-level-display");
+
+    if (!previewContainer) return;
+
+    // Set zoom flag to prevent flicker
+    this.isZooming = true;
+
+    // Apply transform
+    previewContainer.style.transform = `scale(${this.currentZoom})`;
+    previewContainer.style.transformOrigin = "center center";
+
+    // Update zoom display
+    if (zoomDisplay) {
+      zoomDisplay.textContent = `${Math.round(this.currentZoom * 100)}%`;
+    }
+
+    // Update button states
+    this.updateZoomButtonStates();
+
+    console.log(`🔍 Zoom applied: ${Math.round(this.currentZoom * 100)}%`);
+
+    // Reset zoom flag after a short delay
+    setTimeout(() => {
+      this.isZooming = false;
+    }, 100);
+  }
+
+  /**
+   * Update zoom button states (enable/disable)
+   */
+  updateZoomButtonStates() {
+    const zoomInBtn = document.getElementById("zoom-in-btn");
+    const zoomOutBtn = document.getElementById("zoom-out-btn");
+
+    if (zoomInBtn) {
+      zoomInBtn.disabled = this.currentZoom >= this.maxZoom;
+      zoomInBtn.style.opacity = this.currentZoom >= this.maxZoom ? "0.5" : "1";
+    }
+
+    if (zoomOutBtn) {
+      zoomOutBtn.disabled = this.currentZoom <= this.minZoom;
+      zoomOutBtn.style.opacity = this.currentZoom <= this.minZoom ? "0.5" : "1";
+    }
+  }
+
   createPopupUI() {
     const root = document.createElement("div");
     root.id = "mermaid-ai-chat-root";
     root.innerHTML = `
+      <style>
+        .mermaid-preview-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 8px 12px;
+          background: #f5f5f5;
+          border-bottom: 1px solid #ddd;
+          font-weight: bold;
+        }
+
+        .zoom-controls {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .zoom-btn {
+          background: #fff;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          padding: 4px 8px;
+          cursor: pointer;
+          font-size: 12px;
+          transition: all 0.2s;
+        }
+
+        .zoom-btn:hover:not(:disabled) {
+          background: #e6f3ff;
+          border-color: #0066cc;
+        }
+
+        .zoom-btn:disabled {
+          cursor: not-allowed;
+          opacity: 0.5;
+        }
+
+        .zoom-level {
+          font-size: 12px;
+          font-weight: bold;
+          color: #666;
+          min-width: 40px;
+          text-align: center;
+        }
+
+        .zoom-icon {
+          font-size: 10px;
+        }
+
+        #mermaid-preview-container {
+          transition: transform 0.2s ease;
+          overflow: auto;
+        }
+      </style>
       <div id="mermaid-ai-chat-popup" class="mermaid-ai-chat-popup" style="display: none;">
         <div class="mermaid-ai-chat-header">
           <h3>🤖 Mermaid AI Chat Editor</h3>
@@ -650,7 +866,19 @@ export class MermaidAIChat {
           <div class="mermaid-ai-chat-right-pane">
             <div class="mermaid-preview-section">
               <div class="mermaid-preview-header">
-                📊 Diagram Preview
+                <span class="preview-title">📊 Diagram Preview</span>
+                <div class="zoom-controls">
+                  <button id="zoom-out-btn" class="zoom-btn" title="Zoom Out (-)">
+                    <span class="zoom-icon">➖</span>
+                  </button>
+                  <span id="zoom-level-display" class="zoom-level">100%</span>
+                  <button id="zoom-in-btn" class="zoom-btn" title="Zoom In (+)">
+                    <span class="zoom-icon">➕</span>
+                  </button>
+                  <button id="zoom-reset-btn" class="zoom-btn" title="Reset Zoom (0)">
+                    <span class="zoom-icon">🔄</span>
+                  </button>
+                </div>
               </div>
               <div class="mermaid-preview-body">
                 <div id="mermaid-preview-container" class="mermaid-preview-container">
@@ -702,6 +930,9 @@ export class MermaidAIChat {
     codeEditor.addEventListener("input", () => {
       this.updateMermaidPreview();
     });
+
+    // ✅ Zoom controls
+    this.bindZoomControls();
 
     // Click outside to close - with proper event handling
     setTimeout(() => {
@@ -893,13 +1124,30 @@ export class MermaidAIChat {
     const codeEditor = document.getElementById("mermaid-code-editor");
     if (!codeEditor) return;
 
+    // ✅ Skip update if currently zooming to prevent flicker
+    if (this.isZooming) {
+      console.log("🔍 Skipping preview update during zoom to prevent flicker");
+      return;
+    }
+
     const code = codeEditor.value.trim();
 
     // Update current content
     this.currentMermaidContent = code;
 
+    // Store current zoom level
+    const currentZoom = this.currentZoom;
+
     // Use preview component to update
     await this.preview.updatePreview(code);
+
+    // ✅ Reapply zoom after preview update to maintain zoom level
+    if (currentZoom !== 1.0) {
+      setTimeout(() => {
+        this.currentZoom = currentZoom;
+        this.applyZoom();
+      }, 50); // Small delay to ensure DOM is updated
+    }
   }
 
   hideChatPopup() {
