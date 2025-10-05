@@ -7,6 +7,35 @@ import { XMLFormatter } from "./xmlFormatter.js";
 export class ContentSynchronizer {
   constructor() {
     // Simplified - no change tracking needed
+    this.diagramChanges = new Map(); // Track diagram changes
+  }
+
+  /**
+   * Track diagram changes for synchronization
+   * @param {string} diagramId - Diagram ID
+   * @param {string} newCode - New diagram code
+   */
+  trackDiagramChange(diagramId, newCode) {
+    console.log(`📝 Tracking diagram change for ${diagramId}`);
+    this.diagramChanges.set(diagramId, {
+      code: newCode,
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * Get tracked diagram changes
+   * @returns {Map} Map of diagram changes
+   */
+  getTrackedChanges() {
+    return this.diagramChanges;
+  }
+
+  /**
+   * Clear tracked changes
+   */
+  clearTrackedChanges() {
+    this.diagramChanges.clear();
   }
 
   /**

@@ -19,8 +19,13 @@ export class XMLFormatter {
     const doc = parser.parseFromString(wrappedXml, "text/xml");
 
     // Check for parsing errors
-    if (doc.getElementsByTagName("parsererror").length > 0) {
-      console.error("XML/XHTML parsing error. Returning original string.");
+    const parseErrors = doc.getElementsByTagName("parsererror");
+    if (parseErrors.length > 0) {
+      console.warn("XML/XHTML parsing error. Returning original string.", {
+        error: parseErrors[0]?.textContent || "Unknown parsing error",
+        originalLength: xmlString.length,
+        sample: xmlString.substring(0, 100) + "...",
+      });
       return xmlString;
     }
 
@@ -116,7 +121,7 @@ export class XMLFormatter {
   static isSelfClosingTag(tag) {
     const selfClosing = [
       "br",
-      "hr", 
+      "hr",
       "img",
       "input",
       "meta",
@@ -135,11 +140,11 @@ export class XMLFormatter {
    */
   static cleanXMLMarkers(content) {
     if (!content) return "";
-    
+
     // Remove ```xml and ``` markers
     let cleaned = content.replace(/^```xml\s*\n?/gm, "");
     cleaned = cleaned.replace(/\n?```\s*$/gm, "");
-    
+
     return cleaned;
   }
 

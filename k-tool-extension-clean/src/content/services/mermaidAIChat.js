@@ -611,6 +611,13 @@ export class MermaidAIChat {
       return;
     }
 
+    // Extract Mermaid content from the clicked element
+    this.extractMermaidContentFromElement();
+    console.log(
+      "🎉 STEP 8.1.5: Mermaid content extracted:",
+      this.currentMermaidContent.substring(0, 100) + "..."
+    );
+
     const leftPos = Math.min(x, window.innerWidth - 400);
     const topPos = Math.min(y, window.innerHeight - 300);
 
@@ -646,6 +653,93 @@ export class MermaidAIChat {
     }, 100);
 
     console.log("✅ STEP 8: showChatPopup completed");
+  }
+
+  /**
+   * Extract Mermaid content from the clicked element
+   */
+  extractMermaidContentFromElement() {
+    console.log("🔍 Extracting Mermaid content from clicked element...");
+
+    if (!this.lastClickedElement) {
+      console.warn("⚠️ No clicked element found");
+      this.currentMermaidContent = "";
+      return;
+    }
+
+    try {
+      // Try to find Mermaid content in various ways
+      let content = "";
+
+      // Method 1: Look for structured macro with mermaid
+      const mermaidMacro = this.lastClickedElement.closest(
+        'ac\\:structured-macro[ac\\:name="mermaid"], [data-macro-name="mermaid"]'
+      );
+      if (mermaidMacro) {
+        console.log("🎯 Found Mermaid macro:", mermaidMacro);
+
+        // Try to find parameter with code
+        const codeParam = mermaidMacro.querySelector(
+          'ac\\:parameter[ac\\:name="code"], [data-parameter-name="code"]'
+        );
+        if (codeParam) {
+          content = codeParam.textContent || codeParam.innerText || "";
+          console.log(
+            "✅ Extracted from code parameter:",
+            content.substring(0, 50) + "..."
+          );
+        }
+      }
+
+      // Method 2: Look for data attributes
+      if (!content && this.lastClickedElement.dataset) {
+        if (this.lastClickedElement.dataset.mermaidCode) {
+          content = this.lastClickedElement.dataset.mermaidCode;
+          console.log(
+            "✅ Extracted from data-mermaid-code:",
+            content.substring(0, 50) + "..."
+          );
+        }
+      }
+
+      // Method 3: Look in parent elements for text content
+      if (!content) {
+        let parent = this.lastClickedElement.parentElement;
+        let attempts = 0;
+        while (parent && attempts < 5) {
+          const textContent = parent.textContent || parent.innerText || "";
+          if (
+            textContent.includes("graph") ||
+            textContent.includes("flowchart") ||
+            textContent.includes("sequenceDiagram")
+          ) {
+            content = textContent.trim();
+            console.log(
+              "✅ Extracted from parent element:",
+              content.substring(0, 50) + "..."
+            );
+            break;
+          }
+          parent = parent.parentElement;
+          attempts++;
+        }
+      }
+
+      // Method 4: Default fallback
+      if (!content) {
+        content = "graph TD\n    A[Start] --> B[End]";
+        console.log("⚠️ Using fallback Mermaid content");
+      }
+
+      this.currentMermaidContent = content;
+      console.log("✅ Mermaid content extraction completed:", {
+        length: content.length,
+        preview: content.substring(0, 100) + "...",
+      });
+    } catch (error) {
+      console.error("❌ Error extracting Mermaid content:", error);
+      this.currentMermaidContent = "graph TD\n    A[Start] --> B[End]";
+    }
   }
 
   hideChatPopup() {
