@@ -142,21 +142,47 @@ export class HTMLTemplates {
   }
 
   /**
-   * Get AI chat template
+   * Get AI chat template - Enhanced version similar to extension
    * @returns {string} AI chat HTML
    */
   static getAIChatTemplate() {
     return `
       <div class="ai-chat-container">
+        <div class="ai-chat-header">
+          <div class="ai-header-title">
+            <span class="ai-icon">🤖</span>
+            <span>AI Diagram Assistant</span>
+          </div>
+          <div class="ai-header-status">Ready</div>
+        </div>
         <div class="ai-chat-messages" id="ai-chat-messages">
           <div class="ai-message">
             <div class="ai-avatar">🤖</div>
-            <div class="ai-text">Hi! I can help you edit Mermaid diagrams. Select a diagram and ask me to modify it.</div>
+            <div class="ai-text">
+              <strong>Hi! I'm your AI Diagram Assistant.</strong><br/><br/>
+              I can help you modify Mermaid diagrams with natural language commands:<br/>
+              • "Add a new node called 'Database'"<br/>
+              • "Change the color of node A to blue"<br/>
+              • "Add an arrow from A to B"<br/>
+              • "Make this flowchart more detailed"<br/><br/>
+              <em>Select a diagram above and describe what you want to change!</em>
+            </div>
           </div>
         </div>
         <div class="ai-chat-input">
-          <input type="text" id="ai-prompt-input" placeholder="Describe how you want to modify the diagram..." />
-          <button id="ai-send-btn" class="ai-send-btn">Send</button>
+          <div class="ai-input-container">
+            <textarea
+              id="ai-prompt-input"
+              placeholder="Describe how you want to modify the diagram..."
+              rows="2"
+            ></textarea>
+            <button id="ai-send-btn" class="ai-send-btn" title="Send message (Enter)">
+              <span class="send-icon">📤</span>
+            </button>
+          </div>
+          <div class="ai-input-tips">
+            💡 <strong>Tips:</strong> Be specific about changes you want. Press Enter to send.
+          </div>
         </div>
       </div>
     `;

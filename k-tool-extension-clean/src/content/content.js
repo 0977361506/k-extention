@@ -84,8 +84,8 @@ class KToolContent {
       <div class="ktool-tooltip">
         ${
           this.settings.isEnabled
-            ? "🚀 K-Tool Document Generator<br/>Click để mở công cụ sinh tài liệu"
-            : "⚠️ K-Tool đã tắt<br/>Vui lòng bật trong settings"
+            ? "🚀 K-Tool Document Generator<br/>Click to open document generation tool"
+            : "⚠️ K-Tool is disabled<br/>Please enable in settings"
         }
       </div>
     `;
@@ -95,7 +95,7 @@ class KToolContent {
         this.openModal();
       } else {
         this.showNotification(
-          "K-Tool đã tắt. Vui lòng bật trong extension settings.",
+          "K-Tool is disabled. Please enable in extension settings.",
           "warning"
         );
       }
@@ -116,7 +116,7 @@ class KToolContent {
         </div>
         <div class="ktool-modal-body">
           <div class="ktool-tabs">
-            <button class="ktool-tab active" data-tab="generate">📄 Sinh tài liệu</button>
+            <button class="ktool-tab active" data-tab="generate">📄 Generate Document</button>
             <button class="ktool-tab" data-tab="preview">👁️ Preview</button>
             <button class="ktool-tab" data-tab="settings">⚙️ Settings</button>
           </div>
@@ -146,29 +146,29 @@ class KToolContent {
     return `
       <div class="ktool-form">
         <div class="ktool-form-group">
-          <label class="ktool-form-label">URL tài liệu BA *</label>
-          <input 
-            type="url" 
-            class="ktool-form-input" 
-            id="baDocUrl" 
+          <label class="ktool-form-label">BA Document URL *</label>
+          <input
+            type="url"
+            class="ktool-form-input"
+            id="baDocUrl"
             placeholder="https://confluence.com/pages/123456"
             value="${window.location.href}"
           >
         </div>
-        
+
         <div class="ktool-form-group">
-          <label class="ktool-form-label">Ghi chú thêm (tùy chọn)</label>
-          <textarea 
-            class="ktool-form-textarea" 
-            id="additionalNotes" 
-            placeholder="Thêm ghi chú hoặc yêu cầu đặc biệt..."
+          <label class="ktool-form-label">Additional Notes (Optional)</label>
+          <textarea
+            class="ktool-form-textarea"
+            id="additionalNotes"
+            placeholder="Add notes or special requirements..."
             rows="3"
           ></textarea>
         </div>
-        
+
         <div style="display: flex; gap: 12px; margin-top: 20px;">
           <button class="ktool-btn ktool-btn-primary" id="generateBtn">
-            🔧 Tạo tài liệu
+            🔧 Generate Document
           </button>
           <button class="ktool-btn ktool-btn-secondary" id="resetBtn">
             🔄 Reset
@@ -178,7 +178,7 @@ class KToolContent {
       
       <!-- Progress Section -->
       <div class="ktool-progress" id="progressSection" style="display: none;">
-        <h3 style="margin: 0 0 16px 0; font-size: 16px;">Tiến trình sinh tài liệu:</h3>
+        <h3 style="margin: 0 0 16px 0; font-size: 16px;">Document Generation Progress:</h3>
         <div id="progressSteps"></div>
       </div>
     `;
@@ -189,8 +189,8 @@ class KToolContent {
       <div class="ktool-form">
         <div style="text-align: center; padding: 40px; color: #6c757d;">
           <div style="font-size: 48px; margin-bottom: 16px;">📄</div>
-          <h3 style="margin: 0 0 8px 0;">Chưa có nội dung để preview</h3>
-          <p style="margin: 0;">Vui lòng sinh tài liệu trước khi preview.</p>
+          <h3 style="margin: 0 0 8px 0;">No content available for preview</h3>
+          <p style="margin: 0;">Please generate document first to preview.</p>
         </div>
       </div>
     `;
@@ -201,10 +201,10 @@ class KToolContent {
       <div class="ktool-form">
         <div style="text-align: center; padding: 40px; color: #6c757d;">
           <div style="font-size: 48px; margin-bottom: 16px;">⚙️</div>
-          <h3 style="margin: 0 0 8px 0;">Cài đặt Extension</h3>
-          <p style="margin: 0 0 16px 0;">Click vào icon extension trên toolbar để cài đặt.</p>
-          <button class="ktool-btn ktool-btn-primary" onclick="chrome.runtime.openOptionsPage?.() || alert('Vui lòng click vào icon K-Tool trên toolbar để cài đặt')">
-            🔧 Mở Settings
+          <h3 style="margin: 0 0 8px 0;">Extension Settings</h3>
+          <p style="margin: 0 0 16px 0;">Click the button below to open settings popup.</p>
+          <button class="ktool-btn ktool-btn-primary" id="openSettingsBtn">
+            🔧 Open Settings
           </button>
         </div>
       </div>
@@ -244,6 +244,9 @@ class KToolContent {
     resetBtn.addEventListener("click", () => {
       this.handleReset();
     });
+
+    // Add settings button listener
+    this.addSettingsButtonListener();
 
     // Listen for settings changes from background
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -288,6 +291,32 @@ class KToolContent {
     this.isModalOpen = false;
   }
 
+  addSettingsButtonListener() {
+    // Add listener for settings button after modal is created
+    setTimeout(() => {
+      const settingsBtn = document.querySelector("#openSettingsBtn");
+      if (settingsBtn) {
+        settingsBtn.addEventListener("click", () => {
+          this.openSettingsPopup();
+        });
+      }
+    }, 100);
+  }
+
+  openSettingsPopup() {
+    // Open extension popup in navbar
+    if (chrome.runtime && chrome.runtime.openOptionsPage) {
+      chrome.runtime.openOptionsPage();
+    } else {
+      // Fallback: try to open popup
+      chrome.action?.openPopup?.() ||
+        chrome.browserAction?.openPopup?.() ||
+        alert(
+          "Please click the K-Tool icon in the browser toolbar to open settings."
+        );
+    }
+  }
+
   switchTab(tabName) {
     // Update tab buttons
     const tabs = document.querySelectorAll(".ktool-tab");
@@ -311,10 +340,10 @@ class KToolContent {
     if (this.settings.isEnabled) {
       bubble.classList.remove("disabled");
       tooltip.innerHTML =
-        "🚀 K-Tool Document Generator<br/>Click để mở công cụ sinh tài liệu";
+        "🚀 K-Tool Document Generator<br/>Click to open document generation tool";
     } else {
       bubble.classList.add("disabled");
-      tooltip.innerHTML = "⚠️ K-Tool đã tắt<br/>Vui lòng bật trong settings";
+      tooltip.innerHTML = "⚠️ K-Tool is disabled<br/>Please enable in settings";
     }
   }
 
@@ -325,7 +354,7 @@ class KToolContent {
       .value.trim();
 
     if (!baDocUrl) {
-      this.showNotification("Vui lòng nhập URL tài liệu BA!", "error");
+      this.showNotification("Please enter BA document URL!", "error");
       return;
     }
 
@@ -333,7 +362,7 @@ class KToolContent {
     const validation = StorageManager.validateSettings(this.settings);
     if (!validation.isValid) {
       this.showNotification(
-        "Vui lòng cấu hình đầy đủ settings trước khi sinh tài liệu!",
+        "Please configure all settings before generating document!",
         "error"
       );
       this.switchTab("settings");
@@ -349,14 +378,14 @@ class KToolContent {
       const pageId = ConfluenceApi.extractPageId(baDocUrl);
       if (!pageId) {
         throw new Error(
-          "❌ URL không hợp lệ! Vui lòng kiểm tra lại URL Confluence page."
+          "❌ Invalid URL! Please check the Confluence page URL."
         );
       }
 
       console.log("🔍 Fetching content for pageId:", pageId);
       const baDocument = await ConfluenceApi.fetchPageContent(pageId);
       if (!baDocument) {
-        throw new Error("❌ Không thể lấy nội dung tài liệu BA!");
+        throw new Error("❌ Cannot fetch BA document content!");
       }
 
       // Extract images from BA content (HTML) and convert all to base64
@@ -370,7 +399,7 @@ class KToolContent {
 
       // Step 2: Clone template structure
       if (!this.settings.urlTemplate) {
-        throw new Error("⚠️ Vui lòng setting template của tài liệu!");
+        throw new Error("⚠️ Please configure document template in settings!");
       }
 
       console.log("🔄 Cloning template from:", this.settings.urlTemplate);
@@ -380,7 +409,7 @@ class KToolContent {
 
       if (!clonedTemplate) {
         throw new Error(
-          "❌ Không thể clone template! Vui lòng kiểm tra URL template trong Settings."
+          "❌ Cannot clone template! Please check template URL in Settings."
         );
       }
 
@@ -396,7 +425,7 @@ class KToolContent {
 
       if (placeholders.length === 0) {
         throw new Error(
-          "⚠️ Không tìm thấy placeholder nào có dạng <<Tên>>. Vui lòng kiểm tra template!"
+          "⚠️ No placeholders found in format <<Name>>. Please check template!"
         );
       }
 
@@ -451,9 +480,7 @@ class KToolContent {
       const jobResponse = await ApiClient.generateDocument(payload);
       const jobId = jobResponse.data.job_id;
       if (!jobId) {
-        throw new Error(
-          jobResponse.error || "Không nhận được job_id từ server!"
-        );
+        throw new Error(jobResponse.error || "No job_id received from server!");
       }
 
       this.currentJobId = jobId;
@@ -462,7 +489,10 @@ class KToolContent {
       await this.pollGenerationResult(jobId, payload);
     } catch (error) {
       console.error("❌ Generation error:", error);
-      this.showNotification(`Lỗi sinh tài liệu: ${error.message}`, "error");
+      this.showNotification(
+        `Document generation error: ${error.message}`,
+        "error"
+      );
       this.hideProgress();
     }
   }
@@ -486,7 +516,7 @@ class KToolContent {
         console.log(`statusResult: ${statusResult}`);
 
         if (!statusResult.success) {
-          throw new Error("Lỗi kiểm tra trạng thái job");
+          throw new Error("Error checking job status");
         }
 
         const status = statusResult.data.status;
@@ -502,13 +532,13 @@ class KToolContent {
             this.handleGenerationComplete(result.data.result);
             return;
           } else {
-            throw new Error("Lỗi lấy kết quả sinh tài liệu");
+            throw new Error("Error getting document generation result");
           }
         } else if (status === "error") {
-          throw new Error("Job sinh tài liệu thất bại trên server");
+          throw new Error("Document generation job failed on server");
         } else if (attempts >= maxAttempts) {
           throw new Error(
-            "⏰ Timeout: Quá trình sinh tài liệu mất quá nhiều thời gian. Vui lòng thử lại."
+            "⏰ Timeout: Document generation is taking too long. Please try again."
           );
         } else {
           // Update progress message if available
@@ -522,7 +552,7 @@ class KToolContent {
       } catch (error) {
         console.error("❌ Polling error:", error);
         this.showNotification(
-          `Lỗi trong quá trình sinh tài liệu: ${error.message}`,
+          `Error during document generation: ${error.message}`,
           "error"
         );
         this.hideProgress();
@@ -545,7 +575,7 @@ class KToolContent {
     this.switchTab("preview");
     this.updatePreviewTab(result);
 
-    this.showNotification("Sinh tài liệu thành công!", "success");
+    this.showNotification("Document generated successfully!", "success");
     this.hideProgress();
   }
 
@@ -554,22 +584,22 @@ class KToolContent {
     previewTab.innerHTML = `
       <div class="ktool-form">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-          <h3 style="margin: 0;">Preview Tài liệu</h3>
+          <h3 style="margin: 0;">Document Preview</h3>
           <div style="display: flex; gap: 12px;">
             <button class="ktool-btn ktool-btn-secondary" id="editContentBtn">
-              ✏️ Chỉnh sửa nội dung
+              ✏️ Edit Content
             </button>
             <button class="ktool-btn ktool-btn-primary" id="createPageBtn">
-              📄 Tạo trang Confluence
+              📄 Create Confluence Page
             </button>
             <button class="ktool-btn ktool-btn-secondary" id="downloadBtn">
-              💾 Tải xuống
+              💾 Download
             </button>
           </div>
         </div>
 
         <div id="documentPreview" style="border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; background: #f8f9fa; max-height: 400px; overflow-y: auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6;">
-          ${content.full_storage_format || "<p>Không có nội dung</p>"}
+          ${content.full_storage_format || "<p>No content available</p>"}
         </div>
       </div>
     `;
@@ -592,10 +622,22 @@ class KToolContent {
   }
 
   async handleCreatePage() {
+    const createBtn = document.querySelector("#createPageBtn");
+    if (!createBtn) return;
+
+    // Save original button state
+    const originalText = createBtn.innerHTML;
+    const originalDisabled = createBtn.disabled;
+
     try {
+      // Set loading state
+      createBtn.innerHTML = "⏳ Creating Page...";
+      createBtn.disabled = true;
+      createBtn.style.opacity = "0.7";
+
       const spaceKey = ConfluenceApi.getCurrentSpaceKey();
       if (!spaceKey) {
-        throw new Error("Không thể xác định space key của trang hiện tại");
+        throw new Error("Cannot determine space key of current page");
       }
 
       const title = `K-Tool Generated Document - ${new Date().toLocaleDateString()}`;
@@ -609,43 +651,115 @@ class KToolContent {
         parentId = ConfluenceApi.extractPageId(this.settings.documentUrl);
       }
 
-      const result = await ConfluenceApi.createPage(
-        title,
-        content,
-        spaceKey,
-        parentId
-      );
+      await ConfluenceApi.createPage(title, content, spaceKey, parentId);
 
-      this.showNotification("Tạo trang Confluence thành công!", "success");
+      // Success state
+      createBtn.innerHTML = "✅ Page Created Successfully!";
+      createBtn.style.background = "#28a745";
 
-      // Auto redirect to new page
-      if (result.id) {
-        const newPageUrl = `${window.location.origin}/pages/${result.id}`;
-        console.log("🔗 Auto-opening new page:", newPageUrl);
-        window.open(newPageUrl, "_blank");
-      }
+      this.showNotification("Confluence page created successfully!", "success");
+
+      // Delay 1s before restore button
+      setTimeout(() => {
+        // Restore button state
+        createBtn.innerHTML = originalText;
+        createBtn.disabled = originalDisabled;
+        createBtn.style.opacity = "1";
+        createBtn.style.background = "";
+      }, 1000);
     } catch (error) {
       console.error("❌ Create page error:", error);
-      this.showNotification(`Lỗi tạo trang: ${error.message}`, "error");
+
+      // Error state
+      createBtn.innerHTML = "❌ Creation Failed";
+      createBtn.style.background = "#dc3545";
+
+      this.showNotification(`Error creating page: ${error.message}`, "error");
+
+      // Restore button after 2s
+      setTimeout(() => {
+        createBtn.innerHTML = originalText;
+        createBtn.disabled = originalDisabled;
+        createBtn.style.opacity = "1";
+        createBtn.style.background = "";
+      }, 2000);
     }
   }
 
   handleDownload() {
-    const content =
-      this.generatedContent.full_storage_format ||
-      this.generatedContent.content;
-    const blob = new Blob([content], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
+    if (!this.generatedContent) {
+      this.showNotification("No content available to download!", "error");
+      return;
+    }
 
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `ktool-document-${Date.now()}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const downloadBtn = document.querySelector("#downloadBtn");
+    if (!downloadBtn) return;
 
-    this.showNotification("Tải xuống thành công!", "success");
+    // Save original button state
+    const originalText = downloadBtn.innerHTML;
+    const originalDisabled = downloadBtn.disabled;
+
+    try {
+      // Set loading state
+      downloadBtn.innerHTML = "⏳ Preparing Download...";
+      downloadBtn.disabled = true;
+      downloadBtn.style.opacity = "0.7";
+
+      const content =
+        this.generatedContent.full_storage_format ||
+        this.generatedContent.content;
+
+      // Create filename with title if available
+      const title = this.generatedContent.title || "K-Tool Generated Document";
+      const sanitizedTitle = title.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+      const timestamp = new Date()
+        .toISOString()
+        .slice(0, 19)
+        .replace(/:/g, "-");
+      const filename = `${sanitizedTitle}_${timestamp}.html`;
+
+      const blob = new Blob([content], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      // Success state
+      downloadBtn.innerHTML = "✅ Downloaded Successfully!";
+      downloadBtn.style.background = "#28a745";
+
+      this.showNotification("Document downloaded successfully!", "success");
+
+      // Restore button after 1s
+      setTimeout(() => {
+        downloadBtn.innerHTML = originalText;
+        downloadBtn.disabled = originalDisabled;
+        downloadBtn.style.opacity = "1";
+        downloadBtn.style.background = "";
+      }, 1000);
+    } catch (error) {
+      console.error("❌ Download error:", error);
+
+      // Error state
+      downloadBtn.innerHTML = "❌ Download Failed";
+      downloadBtn.style.background = "#dc3545";
+
+      this.showNotification(`Download failed: ${error.message}`, "error");
+
+      // Restore button after 2s
+      setTimeout(() => {
+        downloadBtn.innerHTML = originalText;
+        downloadBtn.disabled = originalDisabled;
+        downloadBtn.style.opacity = "1";
+        downloadBtn.style.background = "";
+      }, 2000);
+    }
   }
 
   handleEditContent(content) {
@@ -655,7 +769,7 @@ class KToolContent {
 
     if (!this.confluenceEditor) {
       console.error("❌ ConfluenceEditor is null or undefined");
-      this.showNotification("Confluence Editor chưa được khởi tạo!", "error");
+      this.showNotification("Confluence Editor not initialized!", "error");
       return;
     }
 
@@ -670,19 +784,19 @@ class KToolContent {
         // Refresh the preview tab with updated content
         this.updatePreviewTab(updatedContent);
 
-        this.showNotification("Nội dung đã được cập nhật!", "success");
+        this.showNotification("Content has been updated!", "success");
       });
 
       // Open the editor with current content
       console.log("🚀 Opening ConfluenceEditor...");
       this.confluenceEditor.openEditor(content, {
-        title: "Chỉnh sửa tài liệu đã sinh",
+        title: "Edit Generated Document",
         showMermaidTools: true,
       });
       console.log("✅ ConfluenceEditor opened successfully");
     } catch (error) {
       console.error("❌ Error opening ConfluenceEditor:", error);
-      this.showNotification(`Lỗi mở editor: ${error.message}`, "error");
+      this.showNotification(`Error opening editor: ${error.message}`, "error");
     }
   }
 
@@ -798,7 +912,7 @@ class KToolContent {
 
     const res = await fetch(chrome.runtime.getURL("lib/mermaid.min.js"));
     const text = await res.text();
-    eval(text); // UMD sẽ gắn mermaid vào window
+    eval(text); // UMD will attach mermaid to window
     console.log("✅ Mermaid loaded dynamically");
     return window.mermaid;
   }

@@ -1,6 +1,8 @@
 // Confluence Content Editor with Rich Text Editing
 // Handles editing interface when Confluence content is returned from API
 
+import { API_URLS } from "../shared/constants.js";
+import { StorageManager as ChromeStorageManager } from "../shared/storage.js";
 import { ContentSynchronizer } from "./utils/contentSynchronizer.js";
 import { DOMHelpers } from "./utils/domHelpers.js";
 import { HTMLTemplates } from "./utils/htmlTemplates.js";
@@ -178,7 +180,10 @@ class ConfluenceEditor {
     DOMHelpers.addEventListener(aiSendBtn, "click", () => this.sendAIPrompt());
 
     DOMHelpers.addEventListener(aiPromptInput, "keypress", (e) => {
-      if (e.key === "Enter") this.sendAIPrompt();
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        this.sendAIPrompt();
+      }
     });
 
     // Zoom controls
@@ -442,38 +447,56 @@ class ConfluenceEditor {
     console.log(`📊 DiagramsMap size: ${this.mermaidDiagramsMap?.size || 0}`);
     console.log(`📊 Current options count: ${selector.options.length}`);
 
-    // Clear existing options
-    DOMHelpers.setContent(
-      selector,
-      '<option value="">📊 Select diagram to edit...</option>',
-      true
-    );
+    // Clear ALL existing options completely
+    selector.innerHTML = "";
+
+    // Add default option
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.textContent = "📊 Select diagram to edit...";
+    selector.appendChild(defaultOption);
 
     console.log(`📊 After clear, options count: ${selector.options.length}`);
 
-    // Add diagram options from Map
+    // Only add diagrams that actually exist in current content
     if (this.mermaidDiagramsMap && this.mermaidDiagramsMap.size > 0) {
       let addedCount = 0;
+
+      // Create a Set to track added diagram IDs to prevent duplicates
+      const addedDiagrams = new Set();
+
       this.mermaidDiagramsMap.forEach((diagramData, diagramId) => {
-        const option = document.createElement("option");
-        option.value = diagramId;
-        option.textContent = `${diagramData.title} (${diagramData.type})`;
-        selector.appendChild(option);
-        addedCount++;
-        console.log(
-          `📊 Added option ${addedCount}: ${diagramData.title} (${diagramData.type})`
-        );
+        // Only add if not already added and has valid content
+        if (
+          !addedDiagrams.has(diagramId) &&
+          diagramData.content &&
+          diagramData.content.trim()
+        ) {
+          const option = document.createElement("option");
+          option.value = diagramId;
+          option.textContent = `${diagramData.title} (${diagramData.type})`;
+          selector.appendChild(option);
+          addedDiagrams.add(diagramId);
+          addedCount++;
+          console.log(
+            `📊 Added option ${addedCount}: ${diagramData.title} (${diagramData.type})`
+          );
+        }
       });
 
       console.log(
-        `✅ Added ${addedCount} diagrams to selector (total options: ${selector.options.length})`
+        `✅ Added ${addedCount} unique diagrams to selector (total options: ${selector.options.length})`
       );
     } else {
       console.warn("⚠️ No Mermaid diagrams found to populate selector");
     }
 
-    // Add event listener for selector change
-    selector.removeEventListener("change", this.handleMermaidSelectorChange);
+    // Remove existing event listener to prevent duplicates
+    if (this.handleMermaidSelectorChange) {
+      selector.removeEventListener("change", this.handleMermaidSelectorChange);
+    }
+
+    // Add fresh event listener
     this.handleMermaidSelectorChange = (e) => {
       const selectedId = e.target.value;
       console.log(`🎯 Selected diagram: ${selectedId}`);
@@ -600,8 +623,8 @@ class ConfluenceEditor {
     }
   }
 
-  // Send AI prompt
-  sendAIPrompt() {
+  // Send AI prompt - EXACT copy from extension logic
+  async sendAIPrompt() {
     const promptInput = this.editorContainer.querySelector("#ai-prompt-input");
     const messagesContainer =
       this.editorContainer.querySelector("#ai-chat-messages");
@@ -611,20 +634,232 @@ class ConfluenceEditor {
     const prompt = promptInput.value.trim();
     if (!prompt) return;
 
+    // Check if a diagram is selected and validate it
+    if (!this.currentSelectedDiagram || !this.currentSelectedDiagramId) {
+      this.addAIMessage(
+        "ai",
+        "⚠️ Please select a Mermaid diagram first to edit it."
+      );
+      return;
+    }
+
+    // Double-check the selected diagram exists in the map
+    const diagramInMap = this.mermaidDiagramsMap.get(
+      this.currentSelectedDiagramId
+    );
+    if (!diagramInMap) {
+      this.addAIMessage(
+        "ai",
+        "❌ Selected diagram not found. Please select a valid diagram."
+      );
+      return;
+    }
+
+    console.log(`🎯 AI editing diagram: ${this.currentSelectedDiagramId}`, {
+      title: diagramInMap.title,
+      type: diagramInMap.type,
+      currentCode: this.currentSelectedDiagram.code?.substring(0, 50) + "...",
+    });
+
     // Add user message
     this.addAIMessage("user", prompt);
 
-    // Clear input
+    // Clear input and show loading
     promptInput.value = "";
+    this.addAIMessage("ai", "🤖 Processing your request...");
 
-    // TODO: Integrate with AI API
-    // For now, show a placeholder response
-    setTimeout(() => {
+    try {
+      // Get current settings for AI model
+      const settings = await ChromeStorageManager.getSettings();
+
+      // Prepare request payload similar to extension
+      const requestBody = {
+        content: this.currentContent?.full_storage_format || "",
+        diagram_code: this.currentSelectedDiagram.code,
+        user_request: prompt,
+        selectedModel: settings.selectedModel || "sonar-pro",
+      };
+
+      console.log("🤖 Sending AI request:", requestBody);
+
+      // Call AI API (same endpoint as extension)
+      const response = await fetch(API_URLS.EDIT_DIAGRAM, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error || `HTTP ${response.status}: ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.edited_diagram) {
+        // Clean and validate the AI response
+        const cleanedDiagram = this.cleanAIResponse(data.edited_diagram);
+
+        if (cleanedDiagram && cleanedDiagram.trim()) {
+          // Validate we're still editing the same diagram
+          const currentDiagramInMap = this.mermaidDiagramsMap.get(
+            this.currentSelectedDiagramId
+          );
+          if (!currentDiagramInMap) {
+            throw new Error("Selected diagram no longer exists");
+          }
+
+          console.log(`🔄 Updating diagram ${this.currentSelectedDiagramId}:`, {
+            oldCode: this.currentSelectedDiagram.code?.substring(0, 30) + "...",
+            newCode: cleanedDiagram.substring(0, 30) + "...",
+          });
+
+          // Update ONLY the selected diagram
+          this.currentSelectedDiagram.code = cleanedDiagram;
+          currentDiagramInMap.content = cleanedDiagram;
+
+          // Update the code editor to reflect the change
+          const codeEditor = this.editorContainer.querySelector(
+            "#mermaid-code-editor"
+          );
+          if (codeEditor) {
+            codeEditor.value = cleanedDiagram;
+            console.log("✅ Code editor updated with AI response");
+          }
+
+          // Update preview for this specific diagram
+          this.updateMermaidPreview();
+
+          // Mark content as modified for synchronization
+          console.log(
+            `🔄 Diagram ${this.currentSelectedDiagramId} updated by AI`
+          );
+
+          // Update the content will be handled by syncAllContent when saving
+
+          // Remove loading message and add success message
+          this.removeLastAIMessage();
+          this.addAIMessage("ai", `✅ Updated diagram: ${prompt}`);
+
+          // Show success notification
+          if (
+            typeof window !== "undefined" &&
+            window["KToolNotificationUtils"]
+          ) {
+            window["KToolNotificationUtils"].success(
+              "AI Assistant",
+              "Diagram updated successfully!"
+            );
+          }
+        } else {
+          throw new Error("Invalid Mermaid syntax in AI response");
+        }
+      } else {
+        throw new Error("Invalid response format or missing edited_diagram");
+      }
+    } catch (error) {
+      console.error("❌ AI API Error:", error);
+
+      // Remove loading message and add error message
+      this.removeLastAIMessage();
       this.addAIMessage(
         "ai",
-        "AI integration coming soon! I will help you modify Mermaid diagrams based on your prompts."
+        `❌ Error: ${error.message}\n\n🔄 Please try again or adjust your request.`
       );
-    }, 1000);
+
+      // Show error notification
+      if (typeof window !== "undefined" && window["KToolNotificationUtils"]) {
+        window["KToolNotificationUtils"].error(
+          "AI Assistant",
+          `Error: ${error.message}`
+        );
+      }
+    }
+  }
+
+  // Clean AI response - enhanced validation
+  cleanAIResponse(response) {
+    if (!response) return "";
+
+    console.log("🧹 Cleaning AI response:", response.substring(0, 100) + "...");
+
+    // Remove markdown code blocks and common AI response patterns
+    let cleaned = response
+      .replace(/```mermaid\n?/gi, "")
+      .replace(/```\n?/g, "")
+      .replace(/^Here's the updated.*?:\s*/i, "")
+      .replace(/^Updated diagram.*?:\s*/i, "")
+      .replace(/^The modified.*?:\s*/i, "");
+
+    // Remove extra whitespace and newlines at start/end
+    cleaned = cleaned.trim();
+
+    // Split by lines and remove empty lines at start/end
+    const lines = cleaned.split("\n");
+    const nonEmptyStart = lines.findIndex((line) => line.trim() !== "");
+    const nonEmptyEnd = lines
+      .slice()
+      .reverse()
+      .findIndex((line) => line.trim() !== "");
+
+    if (nonEmptyStart !== -1 && nonEmptyEnd !== -1) {
+      cleaned = lines
+        .slice(nonEmptyStart, lines.length - nonEmptyEnd)
+        .join("\n");
+    }
+
+    // Basic validation - should start with a mermaid diagram type
+    const validStarts = [
+      "graph",
+      "flowchart",
+      "sequenceDiagram",
+      "classDiagram",
+      "stateDiagram",
+      "erDiagram",
+      "journey",
+      "gantt",
+      "pie",
+      "gitgraph",
+      "mindmap",
+      "timeline",
+    ];
+
+    const firstLine = cleaned.split("\n")[0].trim().toLowerCase();
+    const hasValidStart = validStarts.some((start) =>
+      firstLine.startsWith(start.toLowerCase())
+    );
+
+    if (!hasValidStart) {
+      console.warn(
+        "⚠️ AI response may not be valid Mermaid syntax:",
+        firstLine
+      );
+      console.warn("Expected to start with one of:", validStarts.join(", "));
+    }
+
+    console.log("✅ Cleaned AI response:", cleaned.substring(0, 100) + "...");
+    return cleaned;
+  }
+
+  // Remove last AI message (for loading states)
+  removeLastAIMessage() {
+    const messagesContainer =
+      this.editorContainer.querySelector("#ai-chat-messages");
+    if (!messagesContainer) return;
+
+    const messages = messagesContainer.querySelectorAll(".ai-message");
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (
+        lastMessage.querySelector(".ai-text").textContent.includes("Processing")
+      ) {
+        lastMessage.remove();
+      }
+    }
   }
 
   // Add AI message
