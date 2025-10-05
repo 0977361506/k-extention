@@ -3,6 +3,7 @@ import { ApiClient, ConfluenceApi } from "../shared/api.js";
 import { PROGRESS_STEPS } from "../shared/constants.js";
 import { StorageManager } from "../shared/storage.js";
 import { ConfluenceEditor } from "./confluenceEditor.js";
+import { MermaidAIChat } from "./services/mermaidAIChat.js";
 
 class KToolContent {
   constructor() {
@@ -12,6 +13,7 @@ class KToolContent {
     this.generationJob = null;
     this.progressSteps = [...PROGRESS_STEPS];
     this.confluenceEditor = null;
+    this.mermaidAIChat = null;
     this.init();
   }
 
@@ -41,6 +43,17 @@ class KToolContent {
     } catch (error) {
       console.error("❌ Error initializing ConfluenceEditor:", error);
       this.confluenceEditor = null;
+    }
+
+    // Initialize Mermaid AI Chat
+    try {
+      console.log("🎨 Initializing MermaidAIChat...");
+      const $ = window.jQuery || window.$ || null;
+      this.mermaidAIChat = new MermaidAIChat($);
+      console.log("✅ MermaidAIChat initialized:", this.mermaidAIChat);
+    } catch (error) {
+      console.error("❌ Error initializing MermaidAIChat:", error);
+      this.mermaidAIChat = null;
     }
 
     // Make available globally for debugging

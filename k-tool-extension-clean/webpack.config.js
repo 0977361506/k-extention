@@ -62,6 +62,10 @@ module.exports = {
         { from: "src/popup/popup.html", to: "popup.html" },
         { from: "src/popup/popup.css", to: "popup.css" },
         { from: "src/content/content.css", to: "content.css" },
+        {
+          from: "src/content/services/mermaidAIChat.css",
+          to: "mermaidAIChat.css",
+        },
       ],
     }),
   ],

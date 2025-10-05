@@ -31,7 +31,7 @@
         "https://*.confluence.com/*"
       ],
       "js": ["lib/mermaid.min.js", "content.js"],
-      "css": ["content.css"],
+      "css": ["content.css", "mermaidAIChat.css"],
       "run_at": "document_idle"
     }
   ],
