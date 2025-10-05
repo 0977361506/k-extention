@@ -41,6 +41,9 @@ export class MermaidAIChat {
     this.setupMermaidDetection();
     this.setupConfluencePageChangeDetection();
 
+    // Setup ConfluenceEditor monitoring to avoid conflicts
+    this.setupConfluenceEditorMonitoring();
+
     console.log("✅ AJS: Mermaid AI Chat ready");
   }
 
@@ -355,6 +358,14 @@ export class MermaidAIChat {
   }
 
   injectAIButton() {
+    // ✅ Skip if ConfluenceEditor popup is open to avoid conflict
+    if (document.querySelector(".confluence-editor-overlay")) {
+      console.log(
+        "🚫 ConfluenceEditor popup is open, skipping AI button injection"
+      );
+      return;
+    }
+
     var panel = document.getElementById("property-panel");
     if (!panel) return;
 
@@ -387,6 +398,15 @@ export class MermaidAIChat {
     // Thêm sự kiện click
     aiButton.addEventListener("click", (e) => {
       e.preventDefault();
+
+      // ✅ Skip if ConfluenceEditor popup is open to avoid conflict
+      if (document.querySelector(".confluence-editor-overlay")) {
+        console.log(
+          "🚫 ConfluenceEditor popup is open, ignoring AI button click"
+        );
+        return;
+      }
+
       console.log("🤖 AI Button clicked - checking saved element...");
 
       // Get last clicked element and position from detector
@@ -427,6 +447,67 @@ export class MermaidAIChat {
     }
 
     console.log("✅ Đã chèn nút AI thành công.");
+  }
+
+  /**
+   * Remove AI button when ConfluenceEditor is open
+   */
+  removeAIButton() {
+    const aiButton = document.querySelector(
+      ".macro-placeholder-property-panel-ai-button"
+    );
+    if (aiButton) {
+      aiButton.remove();
+      console.log("🗑️ AI button removed due to ConfluenceEditor popup");
+    }
+  }
+
+  /**
+   * Monitor ConfluenceEditor popup state and manage AI button accordingly
+   */
+  setupConfluenceEditorMonitoring() {
+    // Monitor for ConfluenceEditor popup open/close
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === "childList") {
+          mutation.addedNodes.forEach((node) => {
+            if (
+              node.nodeType === Node.ELEMENT_NODE &&
+              node.classList &&
+              node.classList.contains("confluence-editor-overlay")
+            ) {
+              console.log(
+                "🔍 ConfluenceEditor popup opened, removing AI button"
+              );
+              this.removeAIButton();
+            }
+          });
+
+          mutation.removedNodes.forEach((node) => {
+            if (
+              node.nodeType === Node.ELEMENT_NODE &&
+              node.classList &&
+              node.classList.contains("confluence-editor-overlay")
+            ) {
+              console.log(
+                "🔍 ConfluenceEditor popup closed, re-injecting AI button"
+              );
+              // Delay to ensure DOM is ready
+              setTimeout(() => {
+                this.injectAIButton();
+              }, 100);
+            }
+          });
+        }
+      });
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: false, // Only observe direct children of body
+    });
+
+    console.log("✅ ConfluenceEditor monitoring setup completed");
   }
 
   createPopupUI() {
@@ -534,6 +615,14 @@ export class MermaidAIChat {
 
         // Skip if clicking on AI button (to prevent immediate close)
         if (e.target.closest(".macro-placeholder-property-panel-ai-button")) {
+          return;
+        }
+
+        // ✅ Skip if clicking on AI button in ConfluenceEditor popup
+        if (
+          e.target.closest("#ai-send-btn") &&
+          document.querySelector(".confluence-editor-overlay")
+        ) {
           return;
         }
 
