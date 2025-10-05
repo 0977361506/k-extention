@@ -3,7 +3,8 @@ import { ApiClient, ConfluenceApi } from "../shared/api.js";
 import { PROGRESS_STEPS } from "../shared/constants.js";
 import { StorageManager } from "../shared/storage.js";
 import { ConfluenceEditor } from "./confluenceEditor.js";
-import { MermaidAIChat } from "./services/mermaidAIChat.js";
+import { MermaidAIChat } from "./mermaidAI/mermaidAIChat.js";
+import { MermaidRenderer } from "./utils/mermaidRenderer.js";
 
 class KToolContent {
   constructor() {
@@ -933,34 +934,7 @@ class KToolContent {
   // Initialize Mermaid diagrams
   async initializeMermaid() {
     try {
-      // Load Mermaid if not already loaded
-      await this.loadMermaidScript();
-
       console.log("🎨 Initializing Mermaid diagrams...");
-
-      // Configure Mermaid with proper DOM context
-      window.mermaid.initialize({
-        startOnLoad: false,
-        theme: "default",
-        securityLevel: "loose",
-        fontFamily: "Arial, sans-serif",
-        // Ensure proper DOM context
-        htmlLabels: true,
-        flowchart: {
-          htmlLabels: true,
-        },
-        // Set the document context explicitly
-        deterministicIds: true,
-        deterministicIDSeed: "mermaid-diagram",
-      });
-
-      // Ensure mermaid has access to document
-      if (window.mermaid.setConfig) {
-        window.mermaid.setConfig({
-          securityLevel: "loose",
-          theme: "default",
-        });
-      }
 
       // Find all mermaid code blocks in the preview
       const previewDiv = document.getElementById("documentPreview");
@@ -971,7 +945,8 @@ class KToolContent {
         'ac\\:structured-macro[ac\\:name="mermaid"]'
       );
 
-      mermaidElements.forEach((element, index) => {
+      for (let index = 0; index < mermaidElements.length; index++) {
+        const element = mermaidElements[index];
         // Get the code parameter from Confluence structured macro
         const codeParam = element.querySelector(
           'ac\\:parameter[ac\\:name="code"]'
@@ -998,108 +973,41 @@ class KToolContent {
           mermaidDiv.style.cssText =
             "margin: 20px 0; text-align: center; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6;";
 
-          // Replace the original element
-          element.parentNode.replaceChild(mermaidDiv, element);
-
-          // Render the diagram with proper DOM context
-          try {
-            const diagramId = `mermaid-svg-${index}`;
-
-            // Create a temporary container in the document to ensure proper DOM context
-            const tempContainer = document.createElement("div");
-            tempContainer.style.position = "absolute";
-            tempContainer.style.left = "-9999px";
-            tempContainer.style.top = "-9999px";
-            document.body.appendChild(tempContainer);
-
-            // Modern mermaid.render returns a promise
-            if (
-              window.mermaid.render &&
-              typeof window.mermaid.render === "function"
-            ) {
-              try {
-                // Try modern API first
-                const renderResult = window.mermaid.render(
-                  diagramId,
-                  mermaidCode
-                );
-
-                if (renderResult && typeof renderResult.then === "function") {
-                  // Promise-based API
-                  renderResult
-                    .then((result) => {
-                      // Clean up temp container
-                      if (document.body.contains(tempContainer)) {
-                        document.body.removeChild(tempContainer);
-                      }
-
-                      // Handle different return formats
-                      let svgCode;
-                      if (typeof result === "string") {
-                        svgCode = result;
-                      } else if (result && result.svg) {
-                        svgCode = result.svg;
-                      } else {
-                        svgCode = String(result);
-                      }
-
-                      mermaidDiv.innerHTML = svgCode;
-                      console.log(
-                        "✅ Mermaid diagram rendered successfully (promise API)"
-                      );
-                    })
-                    .catch((error) => {
-                      // Clean up temp container
-                      if (document.body.contains(tempContainer)) {
-                        document.body.removeChild(tempContainer);
-                      }
-                      console.error(
-                        "❌ Mermaid render error (promise API):",
-                        error
-                      );
-                      this.showMermaidError(mermaidDiv, mermaidCode, error);
-                    });
-                } else {
-                  // Synchronous return or callback-based API
-                  if (typeof renderResult === "string") {
-                    // Clean up temp container
-                    if (document.body.contains(tempContainer)) {
-                      document.body.removeChild(tempContainer);
-                    }
-                    mermaidDiv.innerHTML = renderResult;
-                    console.log(
-                      "✅ Mermaid diagram rendered successfully (sync API)"
-                    );
-                  } else {
-                    // Try callback-based API
-                    window.mermaid.render(diagramId, mermaidCode, (svgCode) => {
-                      // Clean up temp container
-                      if (document.body.contains(tempContainer)) {
-                        document.body.removeChild(tempContainer);
-                      }
-                      mermaidDiv.innerHTML = svgCode;
-                      console.log(
-                        "✅ Mermaid diagram rendered successfully (callback API)"
-                      );
-                    });
-                  }
-                }
-              } catch (renderError) {
-                // Clean up temp container
-                if (document.body.contains(tempContainer)) {
-                  document.body.removeChild(tempContainer);
-                }
-                throw renderError;
-              }
-            } else {
-              throw new Error("Mermaid render function not available");
-            }
-          } catch (error) {
-            console.error("❌ Mermaid render error:", error);
-            this.showMermaidError(mermaidDiv, mermaidCode, error);
+          // Validate parent node before replacing
+          if (!element.parentNode) {
+            console.error("❌ Cannot replace Mermaid element: no parent node");
+            console.error(
+              "❌ Mermaid code:",
+              mermaidCode.substring(0, 100) + "..."
+            );
+            return;
           }
+
+          // Replace the original element
+          try {
+            element.parentNode.replaceChild(mermaidDiv, element);
+          } catch (replaceError) {
+            console.error(
+              "❌ Failed to replace Mermaid element:",
+              replaceError
+            );
+            console.error(
+              "❌ Mermaid code:",
+              mermaidCode.substring(0, 100) + "..."
+            );
+            return;
+          }
+
+          // Initialize Mermaid and render the diagram using MermaidRenderer
+          await MermaidRenderer.initializeMermaid();
+          const diagramId = `mermaid-svg-${index}`;
+          await MermaidRenderer.renderDiagram(
+            diagramId,
+            mermaidCode,
+            mermaidDiv
+          );
         }
-      });
+      }
     } catch (error) {
       console.error("❌ Failed to initialize Mermaid:", error);
     }
@@ -1107,21 +1015,61 @@ class KToolContent {
 
   // Show Mermaid error in a nice format
   showMermaidError(container, text, error) {
-    container.innerHTML = `
-      <div style="color: #dc3545; padding: 15px; background: #f8d7da; border-radius: 8px; border: 1px solid #f5c6cb; font-family: Arial, sans-serif;">
-        <div style="font-weight: bold; margin-bottom: 8px; display: flex; align-items: center;">
-          <span style="margin-right: 8px;">⚠️</span>
-          Mermaid Render Error
+    // Validate container before attempting to set innerHTML
+    if (
+      !container ||
+      !container.nodeType ||
+      container.nodeType !== Node.ELEMENT_NODE
+    ) {
+      console.error(
+        "❌ Invalid container for Mermaid error display:",
+        container
+      );
+      console.error("❌ Mermaid error details:", {
+        message: error.message || "Unknown error occurred",
+        code: text ? text.substring(0, 100) + "..." : "No code provided",
+      });
+      return;
+    }
+
+    // Check if container is still in the DOM
+    if (!document.contains(container)) {
+      console.error("❌ Container is not in DOM, cannot display Mermaid error");
+      console.error("❌ Mermaid error details:", {
+        message: error.message || "Unknown error occurred",
+        code: text ? text.substring(0, 100) + "..." : "No code provided",
+      });
+      return;
+    }
+
+    try {
+      container.innerHTML = `
+        <div style="color: #dc3545; padding: 15px; background: #f8d7da; border-radius: 8px; border: 1px solid #f5c6cb; font-family: Arial, sans-serif;">
+          <div style="font-weight: bold; margin-bottom: 8px; display: flex; align-items: center;">
+            <span style="margin-right: 8px;">⚠️</span>
+            Mermaid Render Error
+          </div>
+          <div style="font-size: 12px; color: #721c24; margin-bottom: 10px;">
+            ${error.message || "Unknown error occurred"}
+          </div>
+          <details style="margin-top: 10px;">
+            <summary style="cursor: pointer; font-size: 12px; color: #495057;">Show diagram code</summary>
+            <pre style="margin: 8px 0 0 0; padding: 8px; background: #fff; border: 1px solid #dee2e6; border-radius: 4px; font-size: 11px; overflow-x: auto; white-space: pre-wrap;">${
+              text || "No code provided"
+            }</pre>
+          </details>
         </div>
-        <div style="font-size: 12px; color: #721c24; margin-bottom: 10px;">
-          ${error.message || "Unknown error occurred"}
-        </div>
-        <details style="margin-top: 10px;">
-          <summary style="cursor: pointer; font-size: 12px; color: #495057;">Show diagram code</summary>
-          <pre style="margin: 8px 0 0 0; padding: 8px; background: #fff; border: 1px solid #dee2e6; border-radius: 4px; font-size: 11px; overflow-x: auto; white-space: pre-wrap;">${text}</pre>
-        </details>
-      </div>
-    `;
+      `;
+    } catch (setInnerHTMLError) {
+      console.error(
+        "❌ Failed to set error HTML in container:",
+        setInnerHTMLError
+      );
+      console.error("❌ Original Mermaid error:", {
+        message: error.message || "Unknown error occurred",
+        code: text ? text.substring(0, 100) + "..." : "No code provided",
+      });
+    }
   }
 }
 

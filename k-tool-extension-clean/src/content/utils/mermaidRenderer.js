@@ -60,73 +60,64 @@ export class MermaidRenderer {
    */
   static async renderDiagram(diagramId, mermaidCode, container) {
     try {
-      // Create a temporary container in the document to ensure proper DOM context
+      // 🧹 Làm sạch code trước
+      const cleanCode = this.cleanMermaidCode(mermaidCode);
+      console.log("🧹 Cleaned Mermaid code for rendering:", cleanCode);
+
+      // 🧩 Kiểm tra hợp lệ
+      if (!this.validateMermaidCode(cleanCode)) {
+        throw new Error("Invalid Mermaid syntax after cleaning");
+      }
+      if (!container || container.nodeType !== Node.ELEMENT_NODE) {
+        throw new Error("Invalid container for Mermaid diagram");
+      }
+
+      // ⚙️ Đảm bảo Mermaid đã sẵn sàng
+      if (!window.mermaid || typeof window.mermaid.render !== "function") {
+        throw new Error("Mermaid render function not available");
+      }
+
+      // 🚫 Ngăn chèn SVG lỗi vào body bằng container ảo
       const tempContainer = document.createElement("div");
       tempContainer.style.position = "absolute";
       tempContainer.style.left = "-9999px";
       tempContainer.style.top = "-9999px";
+      tempContainer.style.visibility = "hidden";
       document.body.appendChild(tempContainer);
 
-      // Modern mermaid.render returns a promise
-      if (window.mermaid.render && typeof window.mermaid.render === "function") {
-        try {
-          // Try modern API first
-          const renderResult = window.mermaid.render(diagramId, mermaidCode);
+      try {
+        let svgCode;
 
-          if (renderResult && typeof renderResult.then === "function") {
-            // Promise-based API
-            const result = await renderResult;
-            
-            // Clean up temp container
-            if (document.body.contains(tempContainer)) {
-              document.body.removeChild(tempContainer);
-            }
+        // ⚡ API hiện đại (Promise-based)
+        const renderResult = await window.mermaid.render(
+          diagramId,
+          cleanCode,
+          tempContainer
+        );
 
-            // Handle different return formats
-            let svgCode;
-            if (typeof result === "string") {
-              svgCode = result;
-            } else if (result && result.svg) {
-              svgCode = result.svg;
-            } else {
-              svgCode = String(result);
-            }
-
-            container.innerHTML = svgCode;
-            console.log("✅ Mermaid diagram rendered successfully (promise API)");
-          } else {
-            // Synchronous return or callback-based API
-            if (typeof renderResult === "string") {
-              // Clean up temp container
-              if (document.body.contains(tempContainer)) {
-                document.body.removeChild(tempContainer);
-              }
-              container.innerHTML = renderResult;
-              console.log("✅ Mermaid diagram rendered successfully (sync API)");
-            } else {
-              // Try callback-based API
-              window.mermaid.render(diagramId, mermaidCode, (svgCode) => {
-                // Clean up temp container
-                if (document.body.contains(tempContainer)) {
-                  document.body.removeChild(tempContainer);
-                }
-                container.innerHTML = svgCode;
-                console.log("✅ Mermaid diagram rendered successfully (callback API)");
-              });
-            }
-          }
-        } catch (renderError) {
-          // Clean up temp container
-          if (document.body.contains(tempContainer)) {
-            document.body.removeChild(tempContainer);
-          }
-          throw renderError;
+        // Xử lý các kiểu trả về khác nhau
+        if (typeof renderResult === "string") {
+          svgCode = renderResult;
+        } else if (renderResult && renderResult.svg) {
+          svgCode = renderResult.svg;
+        } else {
+          svgCode = tempContainer.innerHTML;
         }
-      } else {
-        throw new Error("Mermaid render function not available");
+
+        // ✅ Gán SVG vào container thực tế
+        container.innerHTML = svgCode;
+        console.log("✅ Mermaid diagram rendered successfully!");
+      } catch (renderError) {
+        console.error("❌ Mermaid render error:", renderError);
+        this.showMermaidError(container, mermaidCode, renderError);
+      } finally {
+        // 🧹 Dọn container ảo để tránh chèn SVG rác
+        if (tempContainer && tempContainer.parentNode) {
+          tempContainer.remove();
+        }
       }
     } catch (error) {
-      console.error("❌ Mermaid render error:", error);
+      console.error("❌ Mermaid render error (outer):", error);
       this.showMermaidError(container, mermaidCode, error);
     }
   }
@@ -138,21 +129,61 @@ export class MermaidRenderer {
    * @param {Error} error - Error object
    */
   static showMermaidError(container, text, error) {
-    container.innerHTML = `
-      <div style="color: #dc3545; padding: 15px; background: #f8d7da; border-radius: 8px; border: 1px solid #f5c6cb; font-family: Arial, sans-serif;">
-        <div style="font-weight: bold; margin-bottom: 8px; display: flex; align-items: center;">
-          <span style="margin-right: 8px;">⚠️</span>
-          Mermaid Render Error
+    // Validate container before attempting to set innerHTML
+    if (
+      !container ||
+      !container.nodeType ||
+      container.nodeType !== Node.ELEMENT_NODE
+    ) {
+      console.error(
+        "❌ Invalid container for Mermaid error display:",
+        container
+      );
+      console.error("❌ Mermaid error details:", {
+        message: error.message || "Unknown error occurred",
+        code: text ? text.substring(0, 100) + "..." : "No code provided",
+      });
+      return;
+    }
+
+    // Check if container is still in the DOM
+    if (!document.contains(container)) {
+      console.error("❌ Container is not in DOM, cannot display Mermaid error");
+      console.error("❌ Mermaid error details:", {
+        message: error.message || "Unknown error occurred",
+        code: text ? text.substring(0, 100) + "..." : "No code provided",
+      });
+      return;
+    }
+
+    try {
+      container.innerHTML = `
+        <div style="color: #dc3545; padding: 15px; background: #f8d7da; border-radius: 8px; border: 1px solid #f5c6cb; font-family: Arial, sans-serif;">
+          <div style="font-weight: bold; margin-bottom: 8px; display: flex; align-items: center;">
+            <span style="margin-right: 8px;">⚠️</span>
+            Mermaid Render Error
+          </div>
+          <div style="font-size: 12px; color: #721c24; margin-bottom: 10px;">
+            ${error.message || "Unknown error occurred"}
+          </div>
+          <details style="margin-top: 10px;">
+            <summary style="cursor: pointer; font-size: 12px; color: #495057;">Show diagram code</summary>
+            <pre style="margin: 8px 0 0 0; padding: 8px; background: #fff; border: 1px solid #dee2e6; border-radius: 4px; font-size: 11px; overflow-x: auto; white-space: pre-wrap;">${
+              text || "No code provided"
+            }</pre>
+          </details>
         </div>
-        <div style="font-size: 12px; color: #721c24; margin-bottom: 10px;">
-          ${error.message || "Unknown error occurred"}
-        </div>
-        <details style="margin-top: 10px;">
-          <summary style="cursor: pointer; font-size: 12px; color: #495057;">Show diagram code</summary>
-          <pre style="margin: 8px 0 0 0; padding: 8px; background: #fff; border: 1px solid #dee2e6; border-radius: 4px; font-size: 11px; overflow-x: auto; white-space: pre-wrap;">${text}</pre>
-        </details>
-      </div>
-    `;
+      `;
+    } catch (setInnerHTMLError) {
+      console.error(
+        "❌ Failed to set error HTML in container:",
+        setInnerHTMLError
+      );
+      console.error("❌ Original Mermaid error:", {
+        message: error.message || "Unknown error occurred",
+        code: text ? text.substring(0, 100) + "..." : "No code provided",
+      });
+    }
   }
 
   /**
@@ -245,5 +276,85 @@ export class MermaidRenderer {
 
     console.log("🎨 Extracted Mermaid diagrams:", diagrams);
     return { diagrams, diagramsMap };
+  }
+
+  /**
+   * Clean Mermaid code - remove unwanted characters and normalize
+   * @param {string} code - Raw Mermaid code
+   * @returns {string} Cleaned code
+   */
+  static cleanMermaidCode(code) {
+    if (!code) return "";
+
+    // Remove HTML entities
+    let cleaned = code
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&amp;/g, "&")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
+
+    // Remove CDATA sections
+    cleaned = cleaned.replace(/<!\[CDATA\[(.*?)\]\]>/gs, "$1");
+
+    // Remove HTML tags
+    cleaned = cleaned.replace(/<[^>]*>/g, "");
+
+    // Normalize whitespace
+    cleaned = cleaned.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+    // Remove excessive whitespace but preserve structure
+    cleaned = cleaned.replace(/\n\s*\n\s*\n/g, "\n\n");
+
+    // Trim
+    cleaned = cleaned.trim();
+
+    return cleaned;
+  }
+
+  /**
+   * Validate Mermaid code syntax
+   * @param {string} code - Mermaid code to validate
+   * @returns {boolean} True if valid
+   */
+  static validateMermaidCode(code) {
+    if (!code || !code.trim()) {
+      return false;
+    }
+
+    const trimmed = code.trim();
+
+    // Check for valid Mermaid diagram types
+    const validStarters = [
+      "graph",
+      "flowchart",
+      "sequenceDiagram",
+      "classDiagram",
+      "stateDiagram",
+      "erDiagram",
+      "journey",
+      "gantt",
+      "pie",
+      "gitgraph",
+      "mindmap",
+      "timeline",
+      "sankey",
+      "requirement",
+    ];
+
+    const hasValidStarter = validStarters.some((starter) =>
+      trimmed.toLowerCase().startsWith(starter.toLowerCase())
+    );
+
+    if (!hasValidStarter) {
+      return false;
+    }
+
+    // Check for common syntax issues
+    if (trimmed.includes("undefined") || trimmed.includes("null")) {
+      return false;
+    }
+
+    return true;
   }
 }

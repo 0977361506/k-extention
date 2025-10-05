@@ -4,16 +4,19 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 400px;
-  max-width: 90vw;
-  max-height: 80vh;
+  width: 85vw;
+  max-width: 1200px;
+  height: 85vh;
+  max-height: 900px;
   background: white;
   border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
   z-index: 10000;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow: hidden;
-  border: 1px solid #e1e5e9;
+  border: none;
+  display: flex;
+  flex-direction: column;
 }
 
 .mermaid-ai-chat-header {
@@ -52,59 +55,165 @@
 }
 
 .mermaid-ai-chat-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Two-column layout: 4:6 ratio */
+.mermaid-ai-chat-left-pane {
+  flex: 0 0 40%;
   display: flex;
   flex-direction: column;
-  height: 400px;
+  border-right: 1px solid #e9ecef;
+  overflow: hidden;
 }
 
-.mermaid-ai-chat-messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-  background: #f8f9fa;
-}
-
-.mermaid-ai-chat-message {
-  margin-bottom: 16px;
+.mermaid-ai-chat-right-pane {
+  flex: 0 0 60%;
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.mermaid-ai-chat-message.user {
-  justify-content: flex-end;
+/* Code editor section - fixed height, scrollable */
+.mermaid-code-section {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid #e9ecef;
+  overflow: hidden;
 }
 
-.mermaid-ai-chat-message.assistant {
-  justify-content: flex-start;
+/* Chat input section - fixed at bottom */
+.mermaid-chat-section {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: #f8f9fa;
+  min-height: 80px; /* Ensure minimum height for input area */
 }
 
-.mermaid-ai-chat-message.system {
+.mermaid-code-header {
+  background: #f8f9fa;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e9ecef;
+  font-weight: 600;
+  font-size: 14px;
+  color: #495057;
+}
+
+.mermaid-code-editor {
+  flex: 1;
+  border: none;
+  padding: 16px;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: none;
+  outline: none;
+  background: #fafafa;
+  overflow-y: auto; /* Enable vertical scrolling */
+  height: 400px; /* Fixed height to ensure input stays at bottom */
+  min-height: 400px;
+  max-height: 400px;
+}
+
+/* Chat input area - pinned at bottom of left column */
+.mermaid-chat-input-area {
+  padding: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  background: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  border-radius: 0 0 0 12px; /* Rounded bottom-left corner */
+}
+
+.mermaid-chat-input {
+  flex: 1;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 14px;
+  resize: none;
+  outline: none;
+  min-height: 36px;
+  max-height: 100px;
+}
+
+.mermaid-chat-input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.mermaid-chat-send {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 60px;
+}
+
+.mermaid-chat-send:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.mermaid-chat-send:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Preview section */
+.mermaid-preview-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.mermaid-preview-header {
+  background: #f8f9fa;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e9ecef;
+  font-weight: 600;
+  font-size: 14px;
+  color: #495057;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mermaid-preview-body {
+  flex: 1;
+  padding: 16px;
+  overflow: auto;
+  background: white;
+  display: flex;
+  align-items: center;
   justify-content: center;
 }
 
-.message-content {
-  max-width: 80%;
-  padding: 12px 16px;
-  border-radius: 18px;
-  font-size: 14px;
-  line-height: 1.4;
+.mermaid-preview-container {
+  max-width: 100%;
+  max-height: 100%;
+  overflow: auto;
 }
 
-.mermaid-ai-chat-message.user .message-content {
-  background: #007bff;
-  color: white;
-  border-bottom-right-radius: 4px;
+.mermaid-preview-placeholder {
+  color: #6c757d;
+  font-style: italic;
+  text-align: center;
 }
 
-.mermaid-ai-chat-message.assistant .message-content {
-  background: white;
-  color: #333;
-  border: 1px solid #e1e5e9;
-  border-bottom-left-radius: 4px;
-}
-
-.mermaid-ai-chat-message.system .message-content {
-  background: #e7f3ff;
+/* Old chat styles - will be replaced with new layout */
   color: #0066cc;
   border: 1px solid #b3d9ff;
   text-align: center;
@@ -212,16 +321,16 @@
     left: 2.5vw;
     transform: none;
   }
-  
+
   .mermaid-ai-chat-header h3 {
     font-size: 14px;
   }
-  
+
   .mermaid-ai-chat-input-container {
     padding: 12px;
     gap: 8px;
   }
-  
+
   .mermaid-ai-chat-send {
     padding: 10px 16px;
     font-size: 13px;

@@ -63,7 +63,7 @@ module.exports = {
         { from: "src/popup/popup.css", to: "popup.css" },
         { from: "src/content/content.css", to: "content.css" },
         {
-          from: "src/content/services/mermaidAIChat.css",
+          from: "src/content/mermaidAI/mermaidAIChat.css",
           to: "mermaidAIChat.css",
         },
       ],

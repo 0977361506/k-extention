@@ -173,9 +173,11 @@ class ConfluenceEditor {
       this.selectMermaidDiagram(e.target.value)
     );
 
-    DOMHelpers.addEventListener(mermaidCodeEditor, "input", () =>
-      this.updateMermaidPreview()
-    );
+    DOMHelpers.addEventListener(mermaidCodeEditor, "input", () => {
+      this.updateMermaidPreview().catch((error) => {
+        console.error("❌ Error updating Mermaid preview:", error);
+      });
+    });
 
     DOMHelpers.addEventListener(aiSendBtn, "click", () => this.sendAIPrompt());
 
@@ -415,8 +417,32 @@ class ConfluenceEditor {
           // Create a new div for the mermaid diagram
           const mermaidDiv = HTMLTemplates.createMermaidContainer(index);
 
+          // Validate parent node before replacing
+          if (!element.parentNode) {
+            console.error(
+              "❌ Cannot replace Mermaid element in preview: no parent node"
+            );
+            console.error(
+              "❌ Mermaid code:",
+              mermaidCode.substring(0, 100) + "..."
+            );
+            return;
+          }
+
           // Replace the original element
-          element.parentNode.replaceChild(mermaidDiv, element);
+          try {
+            element.parentNode.replaceChild(mermaidDiv, element);
+          } catch (replaceError) {
+            console.error(
+              "❌ Failed to replace Mermaid element in preview:",
+              replaceError
+            );
+            console.error(
+              "❌ Mermaid code:",
+              mermaidCode.substring(0, 100) + "..."
+            );
+            return;
+          }
 
           // Render the diagram
           const diagramId = `preview-mermaid-svg-${index}`;
@@ -538,7 +564,9 @@ class ConfluenceEditor {
       codeEditor.value = diagramData.content;
       this.currentSelectedDiagram = diagram;
       this.currentSelectedDiagramId = diagramId;
-      this.updateMermaidPreview();
+      this.updateMermaidPreview().catch((error) => {
+        console.error("❌ Error updating Mermaid preview:", error);
+      });
 
       // Add event listener for code changes
       codeEditor.removeEventListener("input", this.handleMermaidCodeChange);
@@ -558,7 +586,9 @@ class ConfluenceEditor {
           );
 
           // Update preview
-          this.updateMermaidPreview();
+          this.updateMermaidPreview().catch((error) => {
+            console.error("❌ Error updating Mermaid preview:", error);
+          });
 
           // Mark as modified
           this.isModified = true;
@@ -590,7 +620,7 @@ class ConfluenceEditor {
   }
 
   // Update mermaid preview
-  updateMermaidPreview() {
+  async updateMermaidPreview() {
     const codeEditor = this.editorContainer.querySelector(
       "#mermaid-code-editor"
     );
@@ -610,16 +640,30 @@ class ConfluenceEditor {
       this.currentSelectedDiagram.code = code;
     }
 
-    // Render mermaid
-    preview.innerHTML = `<div class="mermaid">${code}</div>`;
+    // Render mermaid using MermaidRenderer to avoid SVG error appending
+    try {
+      // Clear preview first
+      preview.innerHTML =
+        '<div class="mermaid-placeholder">Rendering diagram...</div>';
 
-    // Initialize mermaid rendering
-    if (window.mermaid) {
-      window.mermaid.init(undefined, preview.querySelector(".mermaid"));
+      // Create unique diagram ID
+      const diagramId = `mermaid-editor-preview-${Date.now()}`;
+
+      // Use MermaidRenderer to safely render the diagram
+      await MermaidRenderer.renderDiagram(diagramId, code, preview);
+
       // Apply current zoom after rendering
       setTimeout(() => {
         this.updateZoom();
       }, 100);
+    } catch (error) {
+      console.error("❌ Error rendering Mermaid in editor preview:", error);
+      preview.innerHTML = `
+        <div class="mermaid-placeholder" style="color: #dc3545;">
+          ❌ Error rendering diagram:<br>
+          <small>${error.message}</small>
+        </div>
+      `;
     }
   }
 
@@ -732,7 +776,9 @@ class ConfluenceEditor {
           }
 
           // Update preview for this specific diagram
-          this.updateMermaidPreview();
+          this.updateMermaidPreview().catch((error) => {
+            console.error("❌ Error updating Mermaid preview:", error);
+          });
 
           // Mark content as modified for synchronization
           console.log(

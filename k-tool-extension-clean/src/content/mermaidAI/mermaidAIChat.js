@@ -1,16 +1,21 @@
 // Mermaid AI Chat Service for K-Tool Extension
-import { ApiClient } from "../../shared/api.js";
+import { MermaidExtractor } from "./MermaidExtractor.js";
+import { MermaidPreview } from "./MermaidPreview.js";
+import { MermaidDetector } from "./MermaidDetector.js";
+import { MermaidAIService } from "./MermaidAIService.js";
 
 export class MermaidAIChat {
   constructor($) {
     this.$ = $ || window.jQuery || window.$; // jQuery instance từ AJS hoặc fallback
     this.isPopupOpen = false;
     this.currentMermaidContent = "";
-    this.currentMermaidElement = null;
 
-    // Lưu element và tọa độ được click
-    this.lastClickedElement = null;
-    this.lastClickPosition = { x: 0, y: 0 };
+    // Initialize components
+    this.preview = new MermaidPreview();
+    this.aiService = new MermaidAIService();
+    this.detector = new MermaidDetector((element, position) => {
+      this.handleMermaidClick(element, position);
+    });
 
     console.log("🚀 Mermaid AI Chat initializing with AJS/jQuery:", !!this.$);
     this.init();
@@ -28,13 +33,30 @@ export class MermaidAIChat {
     // Create popup UI first
     this.createPopupUI();
 
-    // Setup detection - AJS.toInit đảm bảo DOM ready
-    this.setupMermaidDetection();
+    // Initialize preview component
+    this.preview.initialize();
 
-    // Setup page change detection để handle SPA navigation
+    // Setup detection - use both new detector and old methods for compatibility
+    this.detector.setupDetection();
+    this.setupMermaidDetection();
     this.setupConfluencePageChangeDetection();
 
     console.log("✅ AJS: Mermaid AI Chat ready");
+  }
+
+  /**
+   * Handle Mermaid diagram click
+   * @param {HTMLElement} element - Clicked element
+   * @param {Object} position - Click position {x, y}
+   */
+  handleMermaidClick(element, position) {
+    console.log("🎯 Mermaid diagram clicked:", element, position);
+
+    // Extract content from clicked element
+    this.currentMermaidContent = MermaidExtractor.extractFromElement(element);
+
+    // Show popup at click position
+    this.showChatPopup(position.x, position.y);
   }
 
   setupMermaidDetection() {
@@ -149,17 +171,21 @@ export class MermaidAIChat {
                 `🎯 SAVING: Image clicked - saving element and position`
               );
 
-              // Lưu element
-              this.lastClickedElement = event.target;
-
-              // Lưu tọa độ click
-              this.lastClickPosition = {
-                x: event.clientX,
-                y: event.clientY,
+              // Lưu element và position trong detector
+              this.detector.lastClickedElement = event.target;
+              this.detector.lastClickPosition = {
+                x: event.clientX + iframe.offsetLeft,
+                y: event.clientY + iframe.offsetTop,
               };
 
-              console.log(`🎯 SAVED: Element:`, this.lastClickedElement);
-              console.log(`🎯 SAVED: Position:`, this.lastClickPosition);
+              console.log(
+                `🎯 SAVED: Element:`,
+                this.detector.lastClickedElement
+              );
+              console.log(
+                `🎯 SAVED: Position:`,
+                this.detector.lastClickPosition
+              );
             }
           };
 
@@ -363,43 +389,29 @@ export class MermaidAIChat {
       e.preventDefault();
       console.log("🤖 AI Button clicked - checking saved element...");
 
-      // DEBUG: Kiểm tra context và values
-      console.log("🔍 DEBUG AI BUTTON: this:", this);
-      console.log(
-        "🔍 DEBUG AI BUTTON: this.lastClickedElement:",
-        this.lastClickedElement
-      );
-      console.log(
-        "🔍 DEBUG AI BUTTON: this.lastClickPosition:",
-        this.lastClickPosition
-      );
-      console.log(
-        "🔍 DEBUG AI BUTTON: typeof this.lastClickedElement:",
-        typeof this.lastClickedElement
-      );
-      console.log(
-        "🔍 DEBUG AI BUTTON: Boolean check:",
-        !!(this.lastClickedElement && this.lastClickPosition)
-      );
+      // Get last clicked element and position from detector
+      const lastClickedElement = this.detector.getLastClickedElement();
+      const lastClickPosition = this.detector.getLastClickPosition();
 
-      if (this.lastClickedElement && this.lastClickPosition) {
+      console.log(
+        "🔍 DEBUG AI BUTTON: lastClickedElement:",
+        lastClickedElement
+      );
+      console.log("🔍 DEBUG AI BUTTON: lastClickPosition:", lastClickPosition);
+
+      if (lastClickedElement && lastClickPosition) {
         console.log(
           "🤖 Found saved element - showing chat popup at position:",
-          this.lastClickPosition
+          lastClickPosition
         );
-        console.log("🤖 Saved element:", this.lastClickedElement);
+        console.log("🤖 Saved element:", lastClickedElement);
 
         // Gọi showChatPopup với tọa độ đã lưu
-        this.showChatPopup(this.lastClickPosition.x, this.lastClickPosition.y);
+        this.showChatPopup(lastClickPosition.x, lastClickPosition.y);
       } else {
         console.log(
           "⚠️ No saved element found - please click on an image first"
         );
-        console.log(
-          "⚠️ DEBUG: lastClickedElement is:",
-          this.lastClickedElement
-        );
-        console.log("⚠️ DEBUG: lastClickPosition is:", this.lastClickPosition);
         alert("⚠️ Vui lòng click vào một hình ảnh trước khi sử dụng AI Chat!");
       }
     });
@@ -423,27 +435,54 @@ export class MermaidAIChat {
     root.innerHTML = `
       <div id="mermaid-ai-chat-popup" class="mermaid-ai-chat-popup" style="display: none;">
         <div class="mermaid-ai-chat-header">
-          <h3>🤖 Chat with AI about this Mermaid diagram</h3>
+          <h3>🤖 Mermaid AI Chat Editor</h3>
           <button class="mermaid-ai-chat-close">&times;</button>
         </div>
         <div class="mermaid-ai-chat-body">
-          <div class="mermaid-ai-chat-messages" id="mermaid-ai-chat-messages">
-            <div class="mermaid-ai-chat-message system">
-              <div class="message-content">
-                <p>👋 Hi! I can help you modify this Mermaid diagram. What would you like to change?</p>
+          <!-- Left Pane: Code Editor + Chat Input -->
+          <div class="mermaid-ai-chat-left-pane">
+            <!-- Code Editor Section -->
+            <div class="mermaid-code-section">
+              <div class="mermaid-code-header">
+                📝 Mermaid Code
+              </div>
+              <textarea
+                id="mermaid-code-editor"
+                class="mermaid-code-editor"
+                placeholder="Mermaid diagram code will appear here..."
+              ></textarea>
+            </div>
+
+            <!-- Chat Input Section -->
+            <div class="mermaid-chat-section">
+              <div class="mermaid-chat-input-area">
+                <textarea
+                  id="mermaid-ai-chat-input"
+                  class="mermaid-chat-input"
+                  placeholder="💬 Describe how you want to modify the diagram..."
+                  rows="2"
+                ></textarea>
+                <button id="mermaid-ai-chat-send" class="mermaid-chat-send">
+                  Send
+                </button>
               </div>
             </div>
           </div>
-          <div class="mermaid-ai-chat-input-container">
-            <textarea
-              id="mermaid-ai-chat-input"
-              class="mermaid-ai-chat-input"
-              placeholder="Describe how you want to modify the diagram..."
-              rows="3"
-            ></textarea>
-            <button id="mermaid-ai-chat-send" class="mermaid-ai-chat-send">
-              📤 Send
-            </button>
+
+          <!-- Right Pane: Mermaid Preview -->
+          <div class="mermaid-ai-chat-right-pane">
+            <div class="mermaid-preview-section">
+              <div class="mermaid-preview-header">
+                📊 Diagram Preview
+              </div>
+              <div class="mermaid-preview-body">
+                <div id="mermaid-preview-container" class="mermaid-preview-container">
+                  <div class="mermaid-preview-placeholder">
+                    Click on a Mermaid diagram to start editing
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -459,6 +498,7 @@ export class MermaidAIChat {
     const closeBtn = popup.querySelector(".mermaid-ai-chat-close");
     const sendBtn = document.getElementById("mermaid-ai-chat-send");
     const input = document.getElementById("mermaid-ai-chat-input");
+    const codeEditor = document.getElementById("mermaid-code-editor");
 
     // Make popup draggable
     this.makeDraggable(popup, header);
@@ -479,6 +519,11 @@ export class MermaidAIChat {
         e.preventDefault();
         this.sendMessage();
       }
+    });
+
+    // Code editor change event - update preview
+    codeEditor.addEventListener("input", () => {
+      this.updateMermaidPreview();
     });
 
     // Click outside to close - with proper event handling
@@ -611,12 +656,13 @@ export class MermaidAIChat {
       return;
     }
 
-    // Extract Mermaid content from the clicked element
-    this.extractMermaidContentFromElement();
-    console.log(
-      "🎉 STEP 8.1.5: Mermaid content extracted:",
-      this.currentMermaidContent.substring(0, 100) + "..."
-    );
+    // Populate code editor with current content
+    const codeEditor = document.getElementById("mermaid-code-editor");
+    if (codeEditor && this.currentMermaidContent) {
+      codeEditor.value = this.currentMermaidContent;
+      // Trigger preview update
+      this.updateMermaidPreview();
+    }
 
     const leftPos = Math.min(x, window.innerWidth - 400);
     const topPos = Math.min(y, window.innerHeight - 300);
@@ -656,12 +702,31 @@ export class MermaidAIChat {
   }
 
   /**
+   * Update Mermaid preview from code editor
+   */
+  async updateMermaidPreview() {
+    const codeEditor = document.getElementById("mermaid-code-editor");
+    if (!codeEditor) return;
+
+    const code = codeEditor.value.trim();
+
+    // Update current content
+    this.currentMermaidContent = code;
+
+    // Use preview component to update
+    await this.preview.updatePreview(code);
+  }
+
+  /**
    * Extract Mermaid content from the clicked element
    */
   extractMermaidContentFromElement() {
     console.log("🔍 Extracting Mermaid content from clicked element...");
 
-    if (!this.lastClickedElement) {
+    // Get last clicked element from detector
+    const lastClickedElement = this.detector.getLastClickedElement();
+
+    if (!lastClickedElement) {
       console.warn("⚠️ No clicked element found");
       this.currentMermaidContent = "";
       return;
@@ -672,7 +737,7 @@ export class MermaidAIChat {
       let content = "";
 
       // Method 1: Look for structured macro with mermaid
-      const mermaidMacro = this.lastClickedElement.closest(
+      const mermaidMacro = lastClickedElement.closest(
         'ac\\:structured-macro[ac\\:name="mermaid"], [data-macro-name="mermaid"]'
       );
       if (mermaidMacro) {
@@ -692,9 +757,9 @@ export class MermaidAIChat {
       }
 
       // Method 2: Look for data attributes
-      if (!content && this.lastClickedElement.dataset) {
-        if (this.lastClickedElement.dataset.mermaidCode) {
-          content = this.lastClickedElement.dataset.mermaidCode;
+      if (!content && lastClickedElement.dataset) {
+        if (lastClickedElement.dataset.mermaidCode) {
+          content = lastClickedElement.dataset.mermaidCode;
           console.log(
             "✅ Extracted from data-mermaid-code:",
             content.substring(0, 50) + "..."
@@ -704,7 +769,7 @@ export class MermaidAIChat {
 
       // Method 3: Look in parent elements for text content
       if (!content) {
-        let parent = this.lastClickedElement.parentElement;
+        let parent = lastClickedElement.parentElement;
         let attempts = 0;
         while (parent && attempts < 5) {
           const textContent = parent.textContent || parent.innerText || "";
@@ -732,6 +797,15 @@ export class MermaidAIChat {
       }
 
       this.currentMermaidContent = content;
+
+      // Populate code editor
+      const codeEditor = document.getElementById("mermaid-code-editor");
+      if (codeEditor) {
+        codeEditor.value = content;
+        // Trigger preview update
+        this.updateMermaidPreview();
+      }
+
       console.log("✅ Mermaid content extraction completed:", {
         length: content.length,
         preview: content.substring(0, 100) + "...",
@@ -739,6 +813,13 @@ export class MermaidAIChat {
     } catch (error) {
       console.error("❌ Error extracting Mermaid content:", error);
       this.currentMermaidContent = "graph TD\n    A[Start] --> B[End]";
+
+      // Populate code editor with fallback
+      const codeEditor = document.getElementById("mermaid-code-editor");
+      if (codeEditor) {
+        codeEditor.value = this.currentMermaidContent;
+        this.updateMermaidPreview();
+      }
     }
   }
 
@@ -763,54 +844,57 @@ export class MermaidAIChat {
 
   async sendMessage() {
     const input = document.getElementById("mermaid-ai-chat-input");
+    const codeEditor = document.getElementById("mermaid-code-editor");
+    const sendBtn = document.getElementById("mermaid-ai-chat-send");
     const message = input.value.trim();
 
-    // Validate user prompt
-    const promptValidation = ApiClient.validateUserPrompt(message);
-    if (!promptValidation.isValid) {
-      this.addMessage("assistant", `⚠️ ${promptValidation.error}`);
+    if (!message) return;
+
+    // Get current code from editor
+    const currentCode = codeEditor.value.trim();
+    if (!currentCode) {
+      alert("⚠️ Please enter some Mermaid code first");
       return;
     }
 
-    // Validate diagram content
-    const diagramValidation = ApiClient.validateDiagramContent(
-      this.currentMermaidContent
-    );
-    if (!diagramValidation.isValid) {
-      this.addMessage("assistant", `⚠️ ${diagramValidation.error}`);
-      return;
-    }
+    // Update current content
+    this.currentMermaidContent = currentCode;
 
-    // Add user message to chat
-    this.addMessage("user", message);
-
-    // Clear input
-    input.value = "";
-
-    // Show loading
-    const loadingId = this.addMessage("assistant", "🤔 Thinking...");
+    // Disable send button and show loading
+    sendBtn.disabled = true;
+    sendBtn.textContent = "🤔 Thinking...";
+    input.disabled = true;
 
     try {
-      // Call AI API
-      const response = await this.callAI(message);
+      // Call AI service
+      const response = await this.aiService.modifyDiagram(
+        this.currentMermaidContent,
+        message
+      );
 
-      // Remove loading message
-      this.removeMessage(loadingId);
+      // Update code editor with new diagram
+      codeEditor.value = response.edited_diagram;
+      this.currentMermaidContent = response.edited_diagram;
 
-      // Add AI response
-      this.addMessage("assistant", response);
+      // Update preview
+      await this.updateMermaidPreview();
+
+      // Clear input
+      input.value = "";
+
+      console.log("✅ Diagram updated successfully by AI");
     } catch (error) {
       console.error("❌ AI API error:", error);
 
-      // Remove loading message
-      this.removeMessage(loadingId);
-
       // Get user-friendly error message
-      const errorMessage = ApiClient.getErrorMessage({
-        success: false,
-        error: error.message,
-      });
-      this.addMessage("assistant", errorMessage);
+      const errorMessage = this.aiService.getErrorMessage(error);
+      alert(`❌ ${errorMessage}`);
+    } finally {
+      // Re-enable controls
+      sendBtn.disabled = false;
+      sendBtn.textContent = "Send";
+      input.disabled = false;
+      input.focus();
     }
   }
 
@@ -839,30 +923,6 @@ export class MermaidAIChat {
     const message = document.getElementById(messageId);
     if (message) {
       message.remove();
-    }
-  }
-
-  async callAI(userPrompt) {
-    // Prepare payload similar to the original extension
-    const payload = {
-      diagram_content: this.currentMermaidContent,
-      user_prompt: userPrompt,
-      context: "mermaid_diagram_editing",
-    };
-
-    console.log("📤 Sending AI request:", payload);
-
-    // Use the API client from shared module
-    const response = await ApiClient.editDiagram(payload);
-
-    if (response.success) {
-      return (
-        response.data.result ||
-        response.data.response ||
-        "✅ Diagram updated successfully!"
-      );
-    } else {
-      throw new Error(response.error || "Unknown error occurred");
     }
   }
 }
