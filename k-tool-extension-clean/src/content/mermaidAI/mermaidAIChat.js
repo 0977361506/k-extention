@@ -1587,17 +1587,29 @@ export class MermaidAIChat {
         const originalWidth = img.width;
         const originalHeight = img.height;
 
-        // Đặt kích thước Canvas (Áp dụng Scale để có độ phân giải cao hơn)
-        canvas.width = originalWidth * scale;
-        canvas.height = originalHeight * scale;
+        console.log(`🖼️ SVG original size: ${originalWidth}x${originalHeight}`);
 
-        // Quan trọng: Tối ưu hóa chất lượng hình ảnh
-        ctx.scale(scale, scale);
-        ctx.fillStyle = "white"; // Đặt nền trắng (PNG mặc định trong suốt nếu không set)
-        ctx.fillRect(0, 0, originalWidth, originalHeight); // Phủ nền trắng
+        // Tính kích thước canvas với scale
+        const canvasWidth = originalWidth * scale;
+        const canvasHeight = originalHeight * scale;
 
-        // Vẽ ảnh SVG lên Canvas
-        ctx.drawImage(img, 0, 0);
+        // Đặt kích thước Canvas
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+
+        console.log(
+          `🖼️ Canvas size: ${canvasWidth}x${canvasHeight} (scale: ${scale})`
+        );
+
+        // Đặt nền trắng cho toàn bộ canvas
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+        // Vẽ ảnh SVG lên Canvas với kích thước đã scale
+        // Không dùng ctx.scale() để tránh confusion, thay vào đó scale trực tiếp trong drawImage
+        ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+
+        console.log("✅ SVG drawn to canvas successfully");
 
         // 3. Xuất ra chuỗi Data URL định dạng PNG
         const pngDataUrl = canvas.toDataURL("image/png");
