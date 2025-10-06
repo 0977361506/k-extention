@@ -186,14 +186,51 @@ export class MermaidAIChat {
             if (this.isMermaidElement(event.target)) {
               console.log("🎯 Mermaid element clicked:", event.target);
 
-              // Extract and save filename from image src if available
+              // Extract and save comprehensive diagram info
               if (event.target.src) {
                 const filename = MermaidApiClient.extractFilename(
                   event.target.src
                 );
+
+                // Extract macro parameters from data attribute
+                const macroParams = event.target.getAttribute(
+                  "data-macro-parameters"
+                );
+
+                // Save comprehensive diagram info
+                const diagramInfo = {
+                  filename: filename,
+                  src: event.target.src,
+                  macroParameters: macroParams,
+                  element: {
+                    tagName: event.target.tagName,
+                    className: event.target.className,
+                    id: event.target.id,
+                  },
+                };
+
+                // Parse macro parameters if available
+                if (macroParams) {
+                  try {
+                    const params = this.parseMacroParameters(macroParams);
+                    diagramInfo.parsedParams = params;
+                    console.log(`📋 Parsed macro parameters:`, params);
+                  } catch (error) {
+                    console.warn(
+                      "⚠️ Could not parse macro parameters:",
+                      macroParams
+                    );
+                  }
+                }
+
                 if (filename) {
                   MermaidApiClient.saveFilename(filename);
-                  console.log(`💾 Filename saved: ${filename}`);
+                  // Save full diagram info
+                  localStorage.setItem(
+                    "mermaid_diagram_info",
+                    JSON.stringify(diagramInfo)
+                  );
+                  console.log(`💾 Diagram info saved:`, diagramInfo);
                 } else {
                   console.warn(
                     "⚠️ Could not extract filename from src:",
@@ -563,6 +600,26 @@ export class MermaidAIChat {
     });
 
     console.log("✅ ConfluenceEditor monitoring setup completed");
+  }
+
+  /**
+   * Parse macro parameters string
+   * @param {string} macroParams - Macro parameters string like "filename=e3e32|format=svg|revision=5"
+   * @returns {Object} Parsed parameters object
+   */
+  parseMacroParameters(macroParams) {
+    const params = {};
+    if (!macroParams) return params;
+
+    const pairs = macroParams.split("|");
+    pairs.forEach((pair) => {
+      const [key, value] = pair.split("=");
+      if (key && value) {
+        params[key.trim()] = value.trim();
+      }
+    });
+
+    return params;
   }
 
   /**
@@ -1190,21 +1247,44 @@ export class MermaidAIChat {
 
   hideChatPopup() {
     const popup = document.getElementById("mermaid-ai-chat-popup");
-    popup.style.display = "none";
-    this.isPopupOpen = false;
-
-    // Clear messages except system message
     const messagesContainer = document.getElementById(
       "mermaid-ai-chat-messages"
     );
-    const systemMessage = messagesContainer.querySelector(".system");
-    messagesContainer.innerHTML = "";
-    messagesContainer.appendChild(systemMessage);
+    const input = document.getElementById("mermaid-ai-chat-input");
 
-    // Clear input
-    document.getElementById("mermaid-ai-chat-input").value = "";
+    // 🧱 Kiểm tra popup tồn tại trước khi ẩn
+    if (popup) {
+      popup.style.display = "none";
+      this.isPopupOpen = false;
+    } else {
+      console.warn("⚠️ Không tìm thấy phần tử popup (mermaid-ai-chat-popup)");
+    }
 
-    console.log("✅ Chat popup closed");
+    // 🧹 Xóa tin nhắn, giữ lại system message
+    if (messagesContainer) {
+      const systemMessage = messagesContainer.querySelector(".system");
+
+      // Chỉ reset khi container tồn tại
+      messagesContainer.innerHTML = "";
+      if (systemMessage) {
+        messagesContainer.appendChild(systemMessage);
+      } else {
+        console.warn("⚠️ Không tìm thấy system message trong chat container");
+      }
+    } else {
+      console.warn(
+        "⚠️ Không tìm thấy phần tử messages container (mermaid-ai-chat-messages)"
+      );
+    }
+
+    // 🧽 Xóa input nếu có
+    if (input) {
+      input.value = "";
+    } else {
+      console.warn("⚠️ Không tìm thấy input (mermaid-ai-chat-input)");
+    }
+
+    console.log("✅ Chat popup closed (đã kiểm tra đầy đủ phần tử)");
   }
 
   async sendMessage() {
@@ -1289,50 +1369,49 @@ export class MermaidAIChat {
     saveBtn.textContent = "💾 Saving...";
 
     try {
-      // Get saved filename and page ID
-      const filename = MermaidApiClient.getSavedFilename();
-      const pageId = MermaidApiClient.extractPageId();
-
-      if (!filename) {
+      // Get saved diagram info from localStorage
+      const diagramInfoStr = localStorage.getItem("mermaid_diagram_info");
+      if (!diagramInfoStr) {
         throw new Error(
-          "No filename found. Please click on a Mermaid image first."
+          "No diagram info found. Please click on a Mermaid image first."
         );
       }
+
+      const diagramInfo = JSON.parse(diagramInfoStr);
+      const pageId = MermaidApiClient.extractPageId();
 
       if (!pageId) {
         throw new Error("Could not extract page ID from current page.");
       }
 
-      console.log(`💾 Saving diagram: ${filename} on page ${pageId}`);
+      console.log(`💾 Saving diagram with info:`, diagramInfo);
 
-      // Call API to save the diagram
-      const response = await fetch(CONFLUENCE_API_URLS.MERMAID_SAVE, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          "X-Atlassian-Token": "no-check",
-        },
-        body: JSON.stringify({
-          pageId: pageId,
-          filename: filename,
-          mermaidCode: currentCode,
-        }),
-      });
+      // Step 1: Update the Mermaid diagram with full data
+      const updateData = await this.updateMermaidDiagram(
+        diagramInfo.filename,
+        pageId,
+        currentCode,
+        diagramInfo.parsedParams
+      );
+      const reversionNew = updateData?.revision ? updateData.revision : 1;
+      // Step 2: Generate new placeholder image
+      const newImageHtml = await this.generatePlaceholderImage(
+        pageId,
+        diagramInfo.parsedParams,
+        reversionNew
+      );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API Error: ${response.status} - ${errorText}`);
-      }
-
-      const result = await response.json();
-      console.log("✅ Diagram saved successfully:", result);
+      // Step 3: Replace old image with new image in DOM
+      await this.replaceImageInDOM(
+        diagramInfo.parsedParams?.filename,
+        newImageHtml
+      );
 
       // Show success message
-      alert("✅ Diagram saved successfully!");
+      alert("✅ Diagram saved and updated successfully!");
 
-      // Optionally close the popup after successful save
-      // this.hideChatPopup();
+      // Close the popup after successful save
+      this.hideChatPopup();
     } catch (error) {
       console.error("❌ Error saving diagram:", error);
       alert(`❌ Error saving diagram: ${error.message}`);
@@ -1341,6 +1420,412 @@ export class MermaidAIChat {
       saveBtn.disabled = false;
       saveBtn.textContent = "💾 Save";
     }
+  }
+
+  /**
+   * Update Mermaid diagram with full data (filename, data, svg, png)
+   */
+  async updateMermaidDiagram(filename, pageId, mermaidCode, parsedParams) {
+    console.log(`🔄 Updating Mermaid diagram: ${filename} on page ${pageId}`);
+
+    // Generate SVG and PNG from Mermaid code
+    const { svg, png } = await this.generateMermaidAssets(mermaidCode);
+
+    // Get current revision and increment it
+    const currentRevision = parseInt(parsedParams?.revision || "1");
+
+    const updateData = {
+      filename: filename,
+      data: mermaidCode,
+      revision: currentRevision + 1,
+      svg: svg,
+      png: png,
+    };
+
+    console.log("📤 Sending diagram update:", {
+      filename,
+      revision: currentRevision + 1,
+      dataLength: mermaidCode.length,
+      svgLength: svg.length,
+      pngLength: png.length,
+    });
+
+    const response = await fetch(
+      `${CONFLUENCE_API_URLS.MERMAID_UPDATE}/${pageId}`,
+      {
+        method: "PUT",
+        headers: {
+          Accept: "*/*",
+          "Accept-Language": "en-US,en;q=0.9,vi;q=0.8",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+          "Content-Type": "application/json; charset=utf-8",
+          Pragma: "no-cache",
+          Referer: CONFLUENCE_API_URLS.MERMAID_EDIT_REFERER,
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin",
+          "User-Agent": navigator.userAgent,
+          "X-Requested-With": "XMLHttpRequest",
+          "X-Atlassian-Token": "no-check",
+          "sec-ch-ua":
+            '"Chromium";v="140", "Not=A?Brand";v="24", "Google Chrome";v="140"',
+          "sec-ch-ua-mobile": "?0",
+          "sec-ch-ua-platform": '"Windows"',
+        },
+        body: JSON.stringify(updateData),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Mermaid Update API Error: ${response.status} - ${errorText}`
+      );
+    }
+
+    const result = await response.json();
+    console.log("✅ Mermaid diagram updated successfully:", result);
+    return result;
+  }
+
+  /**
+   * Generate SVG and PNG assets from Mermaid code
+   */
+  async generateMermaidAssets(mermaidCode) {
+    try {
+      // Import Mermaid dynamically if not already available
+      if (!window.mermaid) {
+        console.log("📦 Loading Mermaid library...");
+        // Try to use existing Mermaid from page or load it
+        const script = document.createElement("script");
+        script.src =
+          "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js";
+        document.head.appendChild(script);
+
+        await new Promise((resolve, reject) => {
+          script.onload = resolve;
+          script.onerror = reject;
+        });
+      }
+
+      // Initialize Mermaid if needed
+      if (!window.mermaid.mermaidAPI) {
+        window.mermaid.initialize({ startOnLoad: false });
+      }
+
+      console.log("🎨 Generating SVG from Mermaid code...");
+
+      // Generate SVG
+      const { svg } = await window.mermaid.render("temp-diagram", mermaidCode);
+
+      console.log("✅ SVG generated successfully", svg);
+
+      // Generate PNG from SVG using new method
+      const pngDataUrl = await this.convertSvgToPngDataUrl(svg);
+
+      if (!pngDataUrl) {
+        throw new Error("Failed to convert SVG to PNG");
+      }
+
+      // Extract base64 part from data URL (remove "data:image/png;base64," prefix)
+      const pngBase64 = pngDataUrl.split(",")[1];
+
+      console.log("✅ PNG generated successfully");
+
+      return {
+        svg: svg,
+        png: pngBase64,
+      };
+    } catch (error) {
+      console.error("❌ Error generating Mermaid assets:", error);
+      throw new Error(`Failed to generate Mermaid assets: ${error.message}`);
+    }
+  }
+
+  /**
+   * Encode SVG for API
+   */
+  encodeSvg(svg) {
+    // Encode SVG to base64
+    return btoa(
+      new TextEncoder()
+        .encode(svg)
+        .reduce((data, byte) => data + String.fromCharCode(byte), "")
+    );
+  }
+
+  /**
+   * Chuyển đổi chuỗi SVG thành chuỗi Data URL của định dạng PNG.
+   * @param {string} svgString Chuỗi XML của SVG (ví dụ: <svg>...</svg>).
+   * @param {number} scale Hệ số phóng đại (ví dụ: 2 để tăng gấp đôi độ phân giải).
+   * @returns {Promise<string|null>} Promise trả về chuỗi Data URL (data:image/png;base64,...)
+   */
+  async convertSvgToPngDataUrl(svgString, scale = 2) {
+    return new Promise((resolve) => {
+      if (!svgString) {
+        console.error("Lỗi: Chuỗi SVG đầu vào rỗng.");
+        return resolve(null);
+      }
+
+      // 1. Mã hóa chuỗi SVG thành Data URL
+      // Cần đảm bảo chuỗi không có ký tự đặc biệt gây lỗi.
+      const svgUrl =
+        "data:image/svg+xml;base64," +
+        btoa(
+          new TextEncoder()
+            .encode(svgString)
+            .reduce((data, byte) => data + String.fromCharCode(byte), "")
+        );
+
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const img = new Image();
+
+      img.onload = function () {
+        // Lấy kích thước gốc của SVG
+        const originalWidth = img.width;
+        const originalHeight = img.height;
+
+        // Đặt kích thước Canvas (Áp dụng Scale để có độ phân giải cao hơn)
+        canvas.width = originalWidth * scale;
+        canvas.height = originalHeight * scale;
+
+        // Quan trọng: Tối ưu hóa chất lượng hình ảnh
+        ctx.scale(scale, scale);
+        ctx.fillStyle = "white"; // Đặt nền trắng (PNG mặc định trong suốt nếu không set)
+        ctx.fillRect(0, 0, originalWidth, originalHeight); // Phủ nền trắng
+
+        // Vẽ ảnh SVG lên Canvas
+        ctx.drawImage(img, 0, 0);
+
+        // 3. Xuất ra chuỗi Data URL định dạng PNG
+        const pngDataUrl = canvas.toDataURL("image/png");
+
+        // Dọn dẹp
+        canvas.remove();
+
+        resolve(pngDataUrl);
+      };
+
+      img.onerror = function (err) {
+        console.error("Lỗi khi tải SVG vào Image object:", err);
+        // Dọn dẹp
+        canvas.remove();
+        resolve(null);
+      };
+
+      // Bắt đầu tải ảnh SVG đã mã hóa
+      img.src = svgUrl;
+    });
+  }
+
+  /**
+   * Convert SVG to PNG base64 (legacy method)
+   */
+  async svgToPng(svg) {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const img = new Image();
+
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        // Get base64 PNG (remove data:image/png;base64, prefix)
+        const pngBase64 = canvas.toDataURL("image/png").split(",")[1];
+        resolve(pngBase64);
+      };
+
+      img.onerror = (error) => {
+        reject(new Error(`Failed to convert SVG to PNG: ${error}`));
+      };
+
+      // Create blob URL for SVG
+      const svgBlob = new Blob([svg], { type: "image/svg+xml" });
+      const url = URL.createObjectURL(svgBlob);
+      img.src = url;
+    });
+  }
+
+  /**
+   * Save Mermaid code to Confluence (legacy method - kept for compatibility)
+   */
+  async saveMermaidCode(filename, pageId, mermaidCode) {
+    const response = await fetch(CONFLUENCE_API_URLS.MERMAID_SAVE, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-Atlassian-Token": "no-check",
+      },
+      body: JSON.stringify({
+        pageId: pageId,
+        filename: filename,
+        mermaidCode: mermaidCode,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Mermaid Save API Error: ${response.status} - ${errorText}`
+      );
+    }
+
+    const result = await response.json();
+    console.log("✅ Mermaid code saved successfully:", result);
+    return result;
+  }
+
+  /**
+   * Generate new placeholder image using TinyMCE API
+   */
+  async generatePlaceholderImage(pageId, parsedParams, reversionNew) {
+    const macroData = {
+      contentId: pageId,
+      macro: {
+        name: "mermaid-cloud",
+        params: {
+          filename: parsedParams?.filename || "Diagram",
+          revision: reversionNew, // Increment revision
+          zoom: parsedParams?.zoom || "fit",
+          toolbar: parsedParams?.toolbar || "bottom",
+          format: parsedParams?.format || "svg",
+        },
+      },
+    };
+
+    console.log("🖼️ Generating placeholder with data:", macroData);
+
+    const response = await fetch(CONFLUENCE_API_URLS.TINYMCE_PLACEHOLDER, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=UTF-8",
+        Accept: "text/plain, */*; q=0.01",
+        "X-Requested-With": "XMLHttpRequest",
+        "X-Atlassian-Token": "no-check",
+      },
+      body: JSON.stringify(macroData),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `TinyMCE Placeholder API Error: ${response.status} - ${errorText}`
+      );
+    }
+
+    const newImageHtml = await response.text();
+    console.log("✅ New placeholder image generated:", newImageHtml);
+
+    return newImageHtml;
+  }
+
+  /**
+   * Replace old image with new image in DOM by filename
+   */
+  async replaceImageInDOM(filename, newImageHtml) {
+    if (!filename || !newImageHtml) {
+      console.error("❌ Missing filename or newImageHtml");
+      return;
+    }
+
+    console.log(`🔄 Looking for images with filename: ${filename}`);
+
+    // Create temporary element to parse new image HTML
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = newImageHtml;
+    const newImg = tempDiv.querySelector("img");
+
+    if (!newImg) {
+      throw new Error("Could not parse new image from HTML");
+    }
+
+    console.log("🆕 New image element:", newImg);
+
+    // Find images by filename in data-macro-parameters
+    const foundImages = this.findImagesByFilename(filename);
+
+    console.log(`🔍 Found ${foundImages.length} images to replace`);
+
+    foundImages.forEach((oldImg, index) => {
+      console.log(`🔄 Replacing image ${index + 1}:`, oldImg);
+
+      // Replace all attributes from new image to old image
+      this.replaceImageAttributes(oldImg, newImg);
+
+      console.log("✅ Image replaced successfully:", oldImg);
+    });
+  }
+
+  /**
+   * Find images by filename in data-macro-parameters
+   */
+  findImagesByFilename(filename) {
+    const foundImages = [];
+
+    // Search in main document
+    const mainImages = document.querySelectorAll("img[data-macro-parameters]");
+    mainImages.forEach((img) => {
+      const macroParams = img.getAttribute("data-macro-parameters");
+      if (macroParams && macroParams.includes(`filename=${filename}`)) {
+        foundImages.push(img);
+      }
+    });
+
+    // Search in iframes (Confluence editor)
+    const iframes = document.querySelectorAll("iframe");
+    iframes.forEach((iframe) => {
+      try {
+        const iframeDoc =
+          iframe.contentDocument || iframe.contentWindow.document;
+        const iframeImages = iframeDoc.querySelectorAll(
+          "img[data-macro-parameters]"
+        );
+
+        iframeImages.forEach((img) => {
+          const macroParams = img.getAttribute("data-macro-parameters");
+          if (macroParams && macroParams.includes(`filename=${filename}`)) {
+            foundImages.push(img);
+          }
+        });
+      } catch (error) {
+        console.warn("Could not access iframe content:", error);
+      }
+    });
+
+    return foundImages;
+  }
+
+  /**
+   * Replace all attributes from new image to old image
+   */
+  replaceImageAttributes(oldImg, newImg) {
+    // Get all attributes from new image
+    const newAttributes = newImg.attributes;
+
+    // Remove all old attributes except those we want to keep
+    const attributesToKeep = ["id", "class"]; // Keep these if you want
+    const oldAttributes = Array.from(oldImg.attributes);
+
+    oldAttributes.forEach((attr) => {
+      if (!attributesToKeep.includes(attr.name)) {
+        oldImg.removeAttribute(attr.name);
+      }
+    });
+
+    // Copy all attributes from new image
+    Array.from(newAttributes).forEach((attr) => {
+      oldImg.setAttribute(attr.name, attr.value);
+    });
+
+    console.log("🔄 Attributes replaced:", {
+      old: oldAttributes.map((a) => `${a.name}="${a.value}"`),
+      new: Array.from(newAttributes).map((a) => `${a.name}="${a.value}"`),
+    });
   }
 
   addMessage(type, content) {

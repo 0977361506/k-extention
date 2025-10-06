@@ -25,7 +25,9 @@ export const API_URLS = {
 export const CONFLUENCE_API_URLS = {
   MERMAID_DIAGRAM: `${confluenceBaseUrl}/rest/mermaidrest/1.0/mermaid/diagram`,
   MERMAID_SAVE: `${confluenceBaseUrl}/rest/mermaidrest/1.0/mermaid/save`,
+  MERMAID_UPDATE: `${confluenceBaseUrl}/rest/mermaidrest/1.0/mermaid`, // /{pageId}
   MERMAID_EDIT_REFERER: `${confluenceBaseUrl}/plugins/mermaid-cloud/editMermaidDiagram.action`,
+  TINYMCE_PLACEHOLDER: `${confluenceBaseUrl}/rest/tinymce/1/macro/placeholder`,
 };
 
 // Default settings
