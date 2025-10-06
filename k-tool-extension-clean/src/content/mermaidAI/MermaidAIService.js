@@ -2,7 +2,7 @@
  * Mermaid AI Service
  * Handles AI API calls for Mermaid diagram modifications
  */
-import { ApiClient } from "../../shared/api.js";
+import { ApiClient, ConfluenceApi } from "../../shared/api.js";
 import { API_URLS } from "../../shared/constants.js";
 
 export class MermaidAIService {
@@ -30,10 +30,14 @@ export class MermaidAIService {
       throw new Error(diagramValidation.error);
     }
 
+    // Get current page content (raw HTML) from API
+    const pageContent = await this.getCurrentPageContent();
+
     // Prepare payload for new API
     const payload = {
       diagram_code: diagramContent,
       prompt: userPrompt,
+      content: pageContent,
     };
 
     console.log("📤 Sending AI request:", payload);
@@ -72,6 +76,142 @@ export class MermaidAIService {
     } catch (error) {
       console.error("❌ AI API error:", error);
       throw error;
+    }
+  }
+
+  /**
+   * Get current page content using Confluence API
+   * @returns {Promise<string>} Raw HTML content of the current page
+   */
+  async getCurrentPageContent() {
+    try {
+      // Extract page ID from current URL
+      const pageId = this.extractPageId();
+
+      if (!pageId) {
+        console.warn(
+          "⚠️ Could not extract page ID, falling back to DOM content"
+        );
+        return this.getFallbackContent();
+      }
+
+      console.log("🔍 Fetching page content from API for pageId:", pageId);
+
+      // Use existing ConfluenceApi to fetch page content
+      const pageData = await ConfluenceApi.fetchPageContent(pageId);
+
+      if (pageData && pageData.content) {
+        console.log(
+          "📄 Page content fetched from API:",
+          pageData.content.substring(0, 100) + "..."
+        );
+        return pageData.content; // This is the HTML view content
+      }
+
+      // Fallback to storage format if view content not available
+      if (pageData && pageData.storageFormat) {
+        console.log(
+          "📄 Using storage format as fallback:",
+          pageData.storageFormat.substring(0, 100) + "..."
+        );
+        return pageData.storageFormat;
+      }
+
+      console.warn("⚠️ No content found from API, falling back to DOM");
+      return this.getFallbackContent();
+    } catch (error) {
+      console.error("❌ Error fetching page content from API:", error);
+      console.log("🔄 Falling back to DOM content extraction");
+      return this.getFallbackContent();
+    }
+  }
+
+  /**
+   * Extract page ID from current URL
+   * @returns {string|null} Page ID or null if not found
+   */
+  extractPageId() {
+    try {
+      // Method 1: From URL params like /pages/viewpage.action?pageId=1933328
+      const urlParams = new URLSearchParams(window.location.search);
+      const pageId = urlParams.get("pageId");
+      if (pageId) {
+        return pageId;
+      }
+
+      // Method 2: From URL path patterns
+      const pathMatches = [
+        window.location.pathname.match(/\/pages\/(\d+)/),
+        window.location.pathname.match(/\/display\/[^\/]+\/(\d+)/),
+        window.location.href.match(/pageId=(\d+)/),
+        window.location.href.match(/\/(\d+)(?:[?#]|$)/),
+      ];
+
+      for (const match of pathMatches) {
+        if (match && match[1]) {
+          return match[1];
+        }
+      }
+
+      // Method 3: From meta tags
+      const metaSelectors = [
+        'meta[name="ajs-page-id"]',
+        'meta[name="confluence-page-id"]',
+        'meta[property="confluence:page-id"]',
+      ];
+
+      for (const selector of metaSelectors) {
+        const metaTag = document.querySelector(selector);
+        if (metaTag && metaTag.content) {
+          return metaTag.content;
+        }
+      }
+
+      // Method 4: From AJS context if available
+      if (window.AJS && window.AJS.params && window.AJS.params.pageId) {
+        return window.AJS.params.pageId;
+      }
+
+      return null;
+    } catch (error) {
+      console.error("❌ Error extracting page ID:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Fallback method to get content from DOM
+   * @returns {string} HTML content from DOM
+   */
+  getFallbackContent() {
+    try {
+      const contentSelectors = [
+        "#main-content .wiki-content",
+        ".wiki-content",
+        "#content .page-content",
+        ".page-content",
+        "#main-content",
+        ".main-content",
+      ];
+
+      for (const selector of contentSelectors) {
+        const element = document.querySelector(selector);
+        if (element) {
+          const content = element.innerHTML;
+          if (content && content.trim().length > 0) {
+            console.log(
+              `📄 Found fallback content from selector "${selector}"`
+            );
+            return content;
+          }
+        }
+      }
+
+      // Last resort: body content
+      return document.body.innerHTML;
+    } catch (error) {
+      console.error("❌ Error getting fallback content:", error);
+      return "";
     }
   }
 
