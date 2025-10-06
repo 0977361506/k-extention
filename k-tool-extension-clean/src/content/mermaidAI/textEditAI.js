@@ -1,4 +1,5 @@
 // Text Edit AI Service for K-Tool Extension
+import { API_URLS } from "../../shared/constants.js";
 
 export class TextEditAI {
   constructor() {
@@ -975,11 +976,18 @@ export class TextEditAI {
     sendBtn.textContent = "🤔 Processing...";
 
     try {
-      // Simulate API call with mock data
-      const editedText = await this.callEditAPI(this.selectedText, prompt);
+      // Get HTML content containing the selected text
+      const htmlContent = this.getSelectedHtmlContent();
 
-      // Replace selected text with edited text
-      this.replaceSelectedText(editedText);
+      // Call the edit API
+      const editedHtml = await this.callEditAPI(
+        htmlContent,
+        this.selectedText,
+        prompt
+      );
+
+      // Replace the HTML content with edited version
+      this.replaceSelectedHtmlContent(editedHtml);
 
       // Show success message
       this.showNotification("Text edited successfully!", "success");
@@ -996,116 +1004,158 @@ export class TextEditAI {
     }
   }
 
-  async callEditAPI(originalText, prompt) {
-    console.log("🤖 Calling Text Edit API...", { originalText, prompt });
+  async callEditAPI(htmlContent, selectedText, prompt) {
+    console.log("🤖 Calling Text Edit API...", {
+      htmlContent,
+      selectedText,
+      prompt,
+    });
 
     try {
-      // In a real implementation, you would call your actual AI API here
-      // For now, we'll simulate with more sophisticated mock responses
+      const response = await fetch(API_URLS.EDIT_HTML_CONTENT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          html_content: htmlContent,
+          selected_text: selectedText,
+          prompt: prompt,
+        }),
+      });
 
-      // Simulate API call delay
-      await new Promise((resolve) =>
-        setTimeout(resolve, 1500 + Math.random() * 1000)
-      );
-
-      // More sophisticated mock responses based on prompt analysis
-      const lowerPrompt = prompt.toLowerCase();
-      let response = originalText;
-
-      if (
-        lowerPrompt.includes("formal") ||
-        lowerPrompt.includes("professional")
-      ) {
-        response = this.makeFormal(originalText);
-      } else if (
-        lowerPrompt.includes("grammar") ||
-        lowerPrompt.includes("correct")
-      ) {
-        response = this.fixGrammar(originalText);
-      } else if (
-        lowerPrompt.includes("translate") &&
-        lowerPrompt.includes("vietnamese")
-      ) {
-        response = "Bản dịch tiếng Việt: " + originalText;
-      } else if (
-        lowerPrompt.includes("translate") &&
-        lowerPrompt.includes("english")
-      ) {
-        response = "English translation: " + originalText;
-      } else if (
-        lowerPrompt.includes("summarize") ||
-        lowerPrompt.includes("summary")
-      ) {
-        response = this.summarizeText(originalText);
-      } else if (
-        lowerPrompt.includes("expand") ||
-        lowerPrompt.includes("elaborate")
-      ) {
-        response = this.expandText(originalText);
-      } else if (
-        lowerPrompt.includes("bullet") ||
-        lowerPrompt.includes("list")
-      ) {
-        response = this.convertToBulletPoints(originalText);
-      } else {
-        // Generic improvement
-        response = this.improveText(originalText, prompt);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || `HTTP ${response.status}: ${response.statusText}`
+        );
       }
 
-      console.log("✅ Text Edit API response:", response);
-      return response;
+      const editedHtml = await response.text();
+
+      return editedHtml;
     } catch (error) {
       console.error("❌ Text Edit API error:", error);
-      throw new Error("Failed to process text edit request. Please try again.");
+      throw new Error(`Failed to process text edit request: ${error.message}`);
     }
   }
 
-  makeFormal(text) {
-    return text
-      .replace(/\bcan't\b/g, "cannot")
-      .replace(/\bwon't\b/g, "will not")
-      .replace(/\bdon't\b/g, "do not")
-      .replace(/\bisn't\b/g, "is not")
-      .replace(/\baren't\b/g, "are not")
-      .replace(/\bi'm\b/g, "I am")
-      .replace(/\byou're\b/g, "you are")
-      .replace(/\bit's\b/g, "it is");
-  }
+  getSelectedHtmlContent() {
+    try {
+      const doc = this.selectedDocument || document;
+      const selection =
+        doc === document ? window.getSelection() : doc.getSelection();
 
-  fixGrammar(text) {
-    // Simple grammar fixes - in real implementation, use proper grammar checking
-    return (
-      text.replace(/\bi\b/g, "I").replace(/\s+/g, " ").trim() +
-      " [Grammar checked]"
-    );
-  }
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const container = range.commonAncestorContainer;
 
-  summarizeText(text) {
-    const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 0);
-    if (sentences.length <= 1) {
-      return "Summary: " + text;
+        // Get the parent element that contains the selection
+        let parentElement =
+          container.nodeType === Node.TEXT_NODE
+            ? container.parentElement
+            : container;
+
+        // If the parent is too generic (like body), try to find a more specific container
+        while (
+          parentElement &&
+          (parentElement.tagName === "BODY" ||
+            parentElement.tagName === "HTML" ||
+            (parentElement.tagName === "DIV" && !parentElement.className))
+        ) {
+          if (parentElement.children.length === 1) {
+            parentElement = parentElement.children[0];
+          } else {
+            break;
+          }
+        }
+
+        const htmlContent = parentElement
+          ? parentElement.outerHTML
+          : range.toString();
+        console.log("📄 Selected HTML content:", htmlContent);
+        return htmlContent;
+      }
+
+      return this.selectedText;
+    } catch (error) {
+      console.error("❌ Error getting HTML content:", error);
+      return this.selectedText;
     }
-    return "Summary: " + sentences[0].trim() + ".";
   }
 
-  expandText(text) {
-    return (
-      text +
-      " This concept can be further elaborated with additional context, examples, and detailed explanations to provide a more comprehensive understanding of the topic."
-    );
-  }
+  replaceSelectedHtmlContent(newHtmlContent) {
+    try {
+      const doc = this.selectedDocument || document;
+      const selection =
+        doc === document ? window.getSelection() : doc.getSelection();
 
-  convertToBulletPoints(text) {
-    const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 0);
-    // Return HTML for bullet points
-    const bulletItems = sentences
-      .map((sentence) => `<li>${sentence.trim()}</li>`)
-      .join("");
-    return `<ul>${bulletItems}</ul>`;
-  }
+      console.log(
+        "🔄 Replacing HTML content in:",
+        doc === document ? "main document" : "iframe document"
+      );
+      console.log("🔄 New HTML content:", newHtmlContent);
 
-  improveText(text, prompt) {
-    return `Improved based on "${prompt}": ${text}`;
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const container = range.commonAncestorContainer;
+
+        // Get the parent element that contains the selection
+        let parentElement =
+          container.nodeType === Node.TEXT_NODE
+            ? container.parentElement
+            : container;
+
+        // Find the element that should be replaced
+        while (
+          parentElement &&
+          (parentElement.tagName === "BODY" ||
+            parentElement.tagName === "HTML" ||
+            (parentElement.tagName === "DIV" && !parentElement.className))
+        ) {
+          if (parentElement.children.length === 1) {
+            parentElement = parentElement.children[0];
+          } else {
+            break;
+          }
+        }
+
+        if (parentElement && parentElement !== doc.body) {
+          // Replace the entire parent element with new HTML
+          const tempDiv = doc.createElement("div");
+          tempDiv.innerHTML = newHtmlContent;
+
+          // Replace the parent element with the new content
+          if (tempDiv.children.length === 1) {
+            parentElement.parentNode.replaceChild(
+              tempDiv.firstElementChild,
+              parentElement
+            );
+          } else {
+            // If multiple elements, replace with a fragment
+            const fragment = doc.createDocumentFragment();
+            while (tempDiv.firstChild) {
+              fragment.appendChild(tempDiv.firstChild);
+            }
+            parentElement.parentNode.replaceChild(fragment, parentElement);
+          }
+        } else {
+          // Fallback to replacing just the selected text
+          this.replaceSelectedText(newHtmlContent);
+          return;
+        }
+
+        // Clear selection
+        selection.removeAllRanges();
+        console.log("✅ HTML content replaced successfully");
+      } else {
+        throw new Error("No selection range found");
+      }
+    } catch (error) {
+      console.error("❌ Error replacing HTML content:", error);
+      // Fallback to text replacement
+      this.replaceSelectedText(newHtmlContent);
+    }
   }
 
   replaceSelectedText(newContent) {

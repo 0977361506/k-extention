@@ -20,6 +20,7 @@ export const API_URLS = {
   EDIT_DIAGRAM: `${rootUrl}/api/edit-diagram`,
   EDIT_MERMAID: `${rootUrl}/api/edit-mermaid`,
   EDIT_TEXT: `${rootUrl}/api/edit-text`,
+  EDIT_HTML_CONTENT: `${rootUrl}/api/edit-html-content`,
 };
 
 export const CONFLUENCE_API_URLS = {
