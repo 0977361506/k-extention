@@ -4,6 +4,7 @@ import { PROGRESS_STEPS } from "../shared/constants.js";
 import { StorageManager } from "../shared/storage.js";
 import { ConfluenceEditor } from "./confluenceEditor.js";
 import { MermaidAIChat } from "./mermaidAI/mermaidAIChat.js";
+import { TextEditAI } from "./mermaidAI/textEditAI.js";
 import { MermaidRenderer } from "./utils/mermaidRenderer.js";
 
 class KToolContent {
@@ -15,6 +16,7 @@ class KToolContent {
     this.progressSteps = [...PROGRESS_STEPS];
     this.confluenceEditor = null;
     this.mermaidAIChat = null;
+    this.textEditAI = null;
     this.init();
   }
 
@@ -55,6 +57,16 @@ class KToolContent {
     } catch (error) {
       console.error("❌ Error initializing MermaidAIChat:", error);
       this.mermaidAIChat = null;
+    }
+
+    // Initialize Text Edit AI
+    try {
+      console.log("✏️ Initializing TextEditAI...");
+      this.textEditAI = new TextEditAI();
+      console.log("✅ TextEditAI initialized:", this.textEditAI);
+    } catch (error) {
+      console.error("❌ Error initializing TextEditAI:", error);
+      this.textEditAI = null;
     }
 
     // Make available globally for debugging

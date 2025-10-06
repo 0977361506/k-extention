@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Text Edit AI Demo</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        line-height: 1.6;
+      }
+
+      .demo-section {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+      }
+
+      .demo-title {
+        color: #0066cc;
+        margin-bottom: 15px;
+      }
+
+      .editable-content {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px;
+        min-height: 100px;
+        cursor: text;
+      }
+
+      .editable-content[contenteditable="true"] {
+        border-color: #0066cc;
+        box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+      }
+
+      .instructions {
+        background: #e7f3ff;
+        border: 1px solid #b3d9ff;
+        border-radius: 4px;
+        padding: 15px;
+        margin: 20px 0;
+      }
+
+      .toggle-btn {
+        background: #0066cc;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 10px 20px;
+        cursor: pointer;
+        margin: 10px 0;
+      }
+
+      .toggle-btn:hover {
+        background: #0052a3;
+      }
+
+      .status {
+        font-weight: bold;
+        margin: 10px 0;
+      }
+
+      .status.edit-mode {
+        color: #28a745;
+      }
+
+      .status.view-mode {
+        color: #6c757d;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🚀 Text Edit AI Demo</h1>
+
+    <div class="instructions">
+      <h3>📋 Instructions:</h3>
+      <ol>
+        <li>Click "Enable Edit Mode" to simulate Confluence edit mode</li>
+        <li>Select any text in the editable areas below</li>
+        <li>An "✏️ Edit with AI" button should appear</li>
+        <li>Click the button to open the AI editing popup</li>
+        <li>
+          Try different prompts like:
+          <ul>
+            <li>"make it formal"</li>
+            <li>"fix grammar"</li>
+            <li>"translate to vietnamese"</li>
+            <li>"summarize"</li>
+            <li>"expand"</li>
+            <li>"convert to bullet points"</li>
+          </ul>
+        </li>
+      </ol>
+    </div>
+
+    <div class="demo-section">
+      <button id="toggleEditMode" class="toggle-btn">Enable Edit Mode</button>
+      <div id="editStatus" class="status view-mode">
+        Status: View Mode (Text Edit AI disabled)
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h3 class="demo-title">📝 Sample Text 1</h3>
+      <div class="editable-content" id="content1">
+        This is a sample paragraph that you can select and edit using AI. The
+        text contains some informal language like "can't" and "won't" that could
+        be made more formal. It also has some grammar issues that need fixing.
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h3 class="demo-title">📄 Sample Text 2</h3>
+      <div class="editable-content" id="content2">
+        Machine learning is a subset of artificial intelligence that enables
+        computers to learn and improve from experience without being explicitly
+        programmed. It involves algorithms that can identify patterns in data
+        and make predictions or decisions based on that information.
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h3 class="demo-title">📊 Sample Text 3</h3>
+      <div class="editable-content" id="content3">
+        The project was successful because we had good planning, strong team
+        collaboration, effective communication, and proper resource allocation.
+        These factors contributed to meeting our deadlines and achieving our
+        goals.
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h3 class="demo-title">🖼️ Iframe Test</h3>
+      <p>This iframe simulates Confluence editor iframe:</p>
+      <div style="margin-bottom: 10px;">
+        <button id="refreshIframeBtn" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
+          🔄 Refresh Iframe Listeners
+        </button>
+        <button id="logIframeStatusBtn" style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 8px;">
+          📊 Log Iframe Status
+        </button>
+      </div>
+      <iframe
+        id="testIframe"
+        style="
+          width: 100%;
+          height: 200px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+        "
+      ></iframe>
+    </div>
+
+    <script>
+      let isEditMode = false;
+
+      // Simulate Confluence edit mode
+      function toggleEditMode() {
+        isEditMode = !isEditMode;
+        const toggleBtn = document.getElementById("toggleEditMode");
+        const status = document.getElementById("editStatus");
+        const editableContents = document.querySelectorAll(".editable-content");
+
+        if (isEditMode) {
+          // Enable edit mode
+          toggleBtn.textContent = "Disable Edit Mode";
+          status.textContent = "Status: Edit Mode (Text Edit AI enabled)";
+          status.className = "status edit-mode";
+
+          // Make content editable
+          editableContents.forEach((content) => {
+            content.contentEditable = true;
+          });
+
+          // Also make iframe content editable
+          const iframe = document.getElementById("testIframe");
+          if (iframe && iframe.contentDocument) {
+            const iframeContent =
+              iframe.contentDocument.getElementById("iframeContent");
+            if (iframeContent) {
+              iframeContent.contentEditable = true;
+            }
+          }
+
+          // Add edit mode indicators to body
+          document.body.classList.add("edit-mode");
+
+          // Create a fake editor element to trigger detection
+          const fakeEditor = document.createElement("div");
+          fakeEditor.className = "mce-tinymce";
+          fakeEditor.style.display = "none";
+          document.body.appendChild(fakeEditor);
+        } else {
+          // Disable edit mode
+          toggleBtn.textContent = "Enable Edit Mode";
+          status.textContent = "Status: View Mode (Text Edit AI disabled)";
+          status.className = "status view-mode";
+
+          // Make content non-editable
+          editableContents.forEach((content) => {
+            content.contentEditable = false;
+          });
+
+          // Also make iframe content non-editable
+          const iframe = document.getElementById("testIframe");
+          if (iframe && iframe.contentDocument) {
+            const iframeContent =
+              iframe.contentDocument.getElementById("iframeContent");
+            if (iframeContent) {
+              iframeContent.contentEditable = false;
+            }
+          }
+
+          // Remove edit mode indicators
+          document.body.classList.remove("edit-mode");
+
+          // Remove fake editor
+          const fakeEditor = document.querySelector(".mce-tinymce");
+          if (fakeEditor) {
+            fakeEditor.remove();
+          }
+        }
+      }
+
+      // Bind toggle button
+      document
+        .getElementById("toggleEditMode")
+        .addEventListener("click", toggleEditMode);
+
+      // Setup iframe content
+      setupIframeContent();
+
+      // Add some visual feedback for text selection
+      document.addEventListener("mouseup", () => {
+        const selection = window.getSelection();
+        const selectedText = selection.toString().trim();
+
+        if (selectedText.length > 0) {
+          console.log("Text selected:", selectedText);
+          console.log("Edit mode:", isEditMode);
+        }
+      });
+
+      // Setup iframe with editable content
+      function setupIframeContent() {
+        const iframe = document.getElementById("testIframe");
+        console.log("🔧 DEMO: Setting up iframe content...");
+
+        // Create iframe content
+        const iframeContent = `
+              <!DOCTYPE html>
+              <html>
+              <head>
+                  <style>
+                      body {
+                          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                          padding: 15px;
+                          margin: 0;
+                          line-height: 1.6;
+                          background: white;
+                      }
+                      .editable-area {
+                          border: 1px solid #ddd;
+                          border-radius: 4px;
+                          padding: 10px;
+                          min-height: 100px;
+                          background: #f9f9f9;
+                      }
+                      .editable-area[contenteditable="true"] {
+                          border-color: #0066cc;
+                          background: white;
+                      }
+                  </style>
+              </head>
+              <body>
+                  <h4>📝 Iframe Editor Content</h4>
+                  <div class="editable-area" id="iframeContent">
+                      This text is inside an iframe, simulating Confluence editor. You can select this text when edit mode is enabled and use the Text Edit AI feature. Try selecting this sentence and see if the edit button appears! This is a longer text to test selection properly.
+                  </div>
+                  <script>
+                      console.log("🔧 IFRAME: Iframe content script loaded");
+                      console.log("🔧 IFRAME: Document ready state:", document.readyState);
+
+                      // Add selection event listeners for debugging
+                      document.addEventListener("mouseup", function(e) {
+                          const selection = window.getSelection();
+                          const selectedText = selection.toString().trim();
+                          console.log("🔧 IFRAME: Mouse up in iframe, selected text:", selectedText);
+                      });
+
+                      document.addEventListener("keyup", function(e) {
+                          if (e.shiftKey || e.ctrlKey) {
+                              const selection = window.getSelection();
+                              const selectedText = selection.toString().trim();
+                              console.log("🔧 IFRAME: Key up in iframe, selected text:", selectedText);
+                          }
+                      });
+                  </script>
+              </body>
+              </html>
+          `;
+
+        // Set iframe content
+        iframe.onload = function () {
+          console.log("📄 DEMO: Iframe load event fired");
+          const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+
+          if (!iframeDoc) {
+            console.error("❌ DEMO: Cannot access iframe document");
+            return;
+          }
+
+          console.log("📄 DEMO: Writing content to iframe...");
+          iframeDoc.open();
+          iframeDoc.write(iframeContent);
+          iframeDoc.close();
+
+          console.log("✅ DEMO: Iframe content loaded successfully");
+          console.log("📄 DEMO: Iframe document ready state:", iframeDoc.readyState);
+
+          // Trigger extension to re-scan for iframes
+          setTimeout(() => {
+            console.log("🔄 DEMO: Triggering iframe refresh...");
+            if (window.ktoolContent && window.ktoolContent.textEditAI) {
+              window.ktoolContent.textEditAI.refreshIframeListeners();
+            }
+          }, 500);
+        };
+
+        // Trigger load
+        console.log("🔧 DEMO: Setting iframe src to about:blank");
+        iframe.src = "about:blank";
+      }
+
+      // Log when extension loads
+      console.log("Demo page loaded. Waiting for Text Edit AI extension...");
+
+      // Check if extension is loaded
+      setTimeout(() => {
+        if (window.ktoolContent && window.ktoolContent.textEditAI) {
+          console.log("✅ Text Edit AI extension detected!");
+        } else {
+          console.log(
+            "⚠️ Text Edit AI extension not detected. Make sure the extension is installed and enabled."
+          );
+        }
+      }, 2000);
+    </script>
+  </body>
+</html>
