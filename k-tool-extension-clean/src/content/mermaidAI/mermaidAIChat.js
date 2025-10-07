@@ -4,6 +4,7 @@ import { MermaidPreview } from "./MermaidPreview.js";
 import { MermaidAIService } from "./MermaidAIService.js";
 import { MermaidApiClient } from "./MermaidApiClient.js";
 import { CONFLUENCE_API_URLS } from "../../shared/constants.js";
+import { MermaidRenderer } from "../utils/mermaidRenderer.js";
 
 export class MermaidAIChat {
   constructor($) {
@@ -1497,16 +1498,7 @@ export class MermaidAIChat {
       // Import Mermaid dynamically if not already available
       if (!window.mermaid) {
         console.log("📦 Loading Mermaid library...");
-        // Try to use existing Mermaid from page or load it
-        const script = document.createElement("script");
-        script.src =
-          "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js";
-        document.head.appendChild(script);
-
-        await new Promise((resolve, reject) => {
-          script.onload = resolve;
-          script.onerror = reject;
-        });
+        await MermaidRenderer.loadMermaidScript();
       }
 
       // Initialize Mermaid if needed

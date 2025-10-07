@@ -2,6 +2,7 @@
  * Diagram processing utilities for Confluence page creation
  * Ported from extension/src/api/api.ts and extension/src/utils/mermaidExporter.ts
  */
+import { MermaidRenderer } from "../content/utils/mermaidRenderer.js";
 
 /**
  * DiagramData interface equivalent for JavaScript
@@ -21,19 +22,20 @@
 export function getDiagramConfluenceStyles(storage) {
   let macroCounter = 1;
   const extractedDiagrams = [];
-  
+
   // Find all mermaid macros in storage content
-  const mermaidRegex = /<ac:structured-macro[^>]*ac:name="mermaid"[^>]*>[\s\S]*?<ac:parameter[^>]*ac:name="code"[^>]*>(?:<!\[CDATA\[([\s\S]*?)\]\]>|([\s\S]*?))<\/ac:parameter>[\s\S]*?<\/ac:structured-macro>/g;
-  
+  const mermaidRegex =
+    /<ac:structured-macro[^>]*ac:name="mermaid"[^>]*>[\s\S]*?<ac:parameter[^>]*ac:name="code"[^>]*>(?:<!\[CDATA\[([\s\S]*?)\]\]>|([\s\S]*?))<\/ac:parameter>[\s\S]*?<\/ac:structured-macro>/g;
+
   let match;
   while ((match = mermaidRegex.exec(storage)) !== null) {
-    const code = (match[1] || match[2] || '').trim();
-    
+    const code = (match[1] || match[2] || "").trim();
+
     if (code) {
       extractedDiagrams.push({
         filename: `k-tool-diagram-${macroCounter}`,
         macroId: (110 + macroCounter).toString(),
-        diagramCode: code
+        diagramCode: code,
       });
       macroCounter++;
     }
@@ -47,27 +49,22 @@ export function getDiagramConfluenceStyles(storage) {
  * @returns {Promise<void>}
  */
 async function loadMermaidScript() {
-  if (typeof window !== 'undefined' && window.mermaid) {
+  if (typeof window !== "undefined" && window.mermaid) {
     return; // Already loaded
   }
 
-  return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
-    script.onload = () => {
-      // Initialize mermaid
-      if (window.mermaid) {
-        window.mermaid.initialize({ 
-          startOnLoad: false, 
-          securityLevel: 'loose',
-          theme: 'default'
-        });
-      }
-      resolve();
-    };
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
+  if (!window.mermaid) {
+    console.log("📦 Loading Mermaid library...");
+    await MermaidRenderer.loadMermaidScript();
+  }
+  // Initialize mermaid if needed
+  if (window.mermaid && !window.mermaid.mermaidAPI) {
+    window.mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: "loose",
+      theme: "default",
+    });
+  }
 }
 
 /**
@@ -84,51 +81,56 @@ export async function convertDiagramToSvgPng(diagram) {
     await loadMermaidScript();
 
     // Use mermaid to render SVG
-    const svgResult = await window.mermaid.render(`diagram-${diagram.macroId}`, diagram.diagramCode);
-    
+    const svgResult = await window.mermaid.render(
+      `diagram-${diagram.macroId}`,
+      diagram.diagramCode
+    );
+
     // Handle different return types from mermaid.render
     let svgContent;
-    if (typeof svgResult === 'string') {
+    if (typeof svgResult === "string") {
       svgContent = svgResult;
-    } else if (svgResult && typeof svgResult === 'object' && svgResult.svg) {
+    } else if (svgResult && typeof svgResult === "object" && svgResult.svg) {
       svgContent = svgResult.svg;
     } else {
-      throw new Error('Invalid SVG result from mermaid.render');
+      throw new Error("Invalid SVG result from mermaid.render");
     }
-    
+
     diagram.svg = svgContent;
-    
+
     // Convert SVG to PNG using canvas
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
     const img = new Image();
-    
+
     await new Promise((resolve, reject) => {
       img.onload = () => {
         canvas.width = img.width || 800;
         canvas.height = img.height || 600;
-        
+
         if (ctx) {
-          ctx.fillStyle = 'white';
+          ctx.fillStyle = "white";
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, 0);
-          diagram.png = canvas.toDataURL('image/png').split(',')[1]; // Remove data:image/png;base64,
+          diagram.png = canvas.toDataURL("image/png").split(",")[1]; // Remove data:image/png;base64,
         }
         resolve(true);
       };
-      
+
       img.onerror = reject;
-      img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgContent)));
+      img.src =
+        "data:image/svg+xml;base64," +
+        btoa(unescape(encodeURIComponent(svgContent)));
     });
-    
+
     console.log(`✅ Successfully converted ${diagram.filename} to SVG/PNG`);
     return diagram;
-    
   } catch (error) {
     console.error(`❌ Failed to convert diagram ${diagram.filename}:`, error);
-    
+
     // Create fallback PNG data
-    diagram.png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    diagram.png =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
     return diagram;
   }
 }
@@ -141,34 +143,39 @@ export async function convertDiagramToSvgPng(diagram) {
  */
 export async function saveDiagramToAPI(diagram, pageId) {
   try {
-    console.log(`💾 Saving diagram ${diagram.filename} to API for page ${pageId}`);
-    
+    console.log(
+      `💾 Saving diagram ${diagram.filename} to API for page ${pageId}`
+    );
+
     const payload = {
       filename: diagram.filename,
       data: diagram.diagramCode,
-      svg: diagram.svg || '',
-      png: diagram.png || ''
+      svg: diagram.svg || "",
+      png: diagram.png || "",
     };
-    
+
     const response = await fetch(`/rest/mermaidrest/1.0/mermaid/${pageId}`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Accept': 'application/json, text/javascript, */*; q=0.01',
-        'Content-Type': 'application/json; charset=UTF-8',
-        'X-Requested-With': 'XMLHttpRequest'
+        Accept: "application/json, text/javascript, */*; q=0.01",
+        "Content-Type": "application/json; charset=UTF-8",
+        "X-Requested-With": "XMLHttpRequest",
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`❌ Failed to save diagram ${diagram.filename}:`, response.status, errorText);
+      console.error(
+        `❌ Failed to save diagram ${diagram.filename}:`,
+        response.status,
+        errorText
+      );
       return false;
     }
-    
+
     console.log(`✅ Successfully saved diagram ${diagram.filename} to API`);
     return true;
-    
   } catch (error) {
     console.error(`❌ Error saving diagram ${diagram.filename}:`, error);
     return false;
@@ -183,65 +190,85 @@ export async function saveDiagramToAPI(diagram, pageId) {
  */
 export async function processAndSaveDiagrams(pageId, extractedDiagrams) {
   if (extractedDiagrams.length === 0) {
-    console.log('ℹ️ No diagrams to process');
+    console.log("ℹ️ No diagrams to process");
     return { success: 0, total: 0, errors: [] };
   }
-  
-  console.log(`🔄 Processing ${extractedDiagrams.length} diagrams for page ${pageId}`);
-  
+
+  console.log(
+    `🔄 Processing ${extractedDiagrams.length} diagrams for page ${pageId}`
+  );
+
   let successCount = 0;
   const errors = [];
   const totalDiagrams = extractedDiagrams.length;
-  
+
   try {
     // Convert all diagrams to SVG/PNG first
-    console.log('🎨 Converting diagrams to SVG/PNG...');
+    console.log("🎨 Converting diagrams to SVG/PNG...");
     const processedDiagrams = await Promise.all(
-      extractedDiagrams.map(diagram => convertDiagramToSvgPng(diagram))
+      extractedDiagrams.map((diagram) => convertDiagramToSvgPng(diagram))
     );
-    
+
     // Save diagrams sequentially (one by one)
-    console.log('💾 Saving diagrams sequentially...');
+    console.log("💾 Saving diagrams sequentially...");
     for (let i = 0; i < processedDiagrams.length; i++) {
       const diagram = processedDiagrams[i];
-      console.log(`📊 Saving diagram ${i + 1}/${processedDiagrams.length}: ${diagram.filename}`);
-      
+      console.log(
+        `📊 Saving diagram ${i + 1}/${processedDiagrams.length}: ${
+          diagram.filename
+        }`
+      );
+
       try {
         const success = await saveDiagramToAPI(diagram, pageId);
         if (success) {
           successCount++;
-          console.log(`✅ Diagram ${i + 1}/${processedDiagrams.length} saved successfully`);
+          console.log(
+            `✅ Diagram ${i + 1}/${processedDiagrams.length} saved successfully`
+          );
         } else {
           errors.push(`Failed to save diagram: ${diagram.filename}`);
-          console.error(`❌ Diagram ${i + 1}/${processedDiagrams.length} failed to save`);
+          console.error(
+            `❌ Diagram ${i + 1}/${processedDiagrams.length} failed to save`
+          );
         }
       } catch (error) {
-        const errorMsg = `Error saving diagram ${diagram.filename}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        const errorMsg = `Error saving diagram ${diagram.filename}: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`;
         errors.push(errorMsg);
-        console.error(`❌ Diagram ${i + 1}/${processedDiagrams.length} error:`, error);
+        console.error(
+          `❌ Diagram ${i + 1}/${processedDiagrams.length} error:`,
+          error
+        );
       }
-      
+
       // Add small delay between saves to avoid overwhelming the API
       if (i < processedDiagrams.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
     }
-    
   } catch (error) {
-    console.error('❌ Error during diagram processing:', error);
-    errors.push(`Processing error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error("❌ Error during diagram processing:", error);
+    errors.push(
+      `Processing error: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
   }
-  
+
   const result = {
     success: successCount,
     total: totalDiagrams,
-    errors
+    errors,
   };
-  
-  console.log(`📊 Diagram processing complete: ${successCount}/${totalDiagrams} successful`);
+
+  console.log(
+    `📊 Diagram processing complete: ${successCount}/${totalDiagrams} successful`
+  );
   if (errors.length > 0) {
-    console.warn('⚠️ Diagram processing errors:', errors);
+    console.warn("⚠️ Diagram processing errors:", errors);
   }
-  
+
   return result;
 }

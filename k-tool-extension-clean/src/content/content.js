@@ -527,7 +527,7 @@ class KToolContent {
   // Keeping them for backward compatibility if needed
 
   async pollGenerationResult(jobId, payload) {
-    const maxAttempts = 20; // 10 minutes max (60 * 10 seconds)
+    const maxAttempts = 40; // 10 minutes max (60 * 10 seconds)
     let attempts = 0;
 
     const poll = async () => {
@@ -928,19 +928,6 @@ class KToolContent {
         }
       }, 300);
     }, 5000);
-  }
-
-  async loadMermaidScript() {
-    if (window.mermaid) {
-      console.log("⚡ Mermaid already loaded");
-      return window.mermaid;
-    }
-
-    const res = await fetch(chrome.runtime.getURL("lib/mermaid.min.js"));
-    const text = await res.text();
-    eval(text); // UMD will attach mermaid to window
-    console.log("✅ Mermaid loaded dynamically");
-    return window.mermaid;
   }
 
   // Initialize Mermaid diagrams
