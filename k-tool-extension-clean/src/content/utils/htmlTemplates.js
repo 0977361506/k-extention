@@ -27,6 +27,9 @@ export class HTMLTemplates {
           <button class="confluence-editor-tab active" id="content-tab">
             📝 Edit Content
           </button>
+          <button class="confluence-editor-tab" id="live-edit-tab">
+            ✨ Live Edit
+          </button>
           <button class="confluence-editor-tab" id="mermaid-tab">
             📊 Edit Mermaid Code
           </button>
@@ -34,6 +37,7 @@ export class HTMLTemplates {
 
         <div class="confluence-editor-body">
           ${this.getContentTabTemplate()}
+          ${this.getLiveEditTabTemplate()}
           ${this.getMermaidTabTemplate()}
         </div>
       </div>
@@ -52,9 +56,15 @@ export class HTMLTemplates {
           <!-- Raw XHTML Editor (Left) -->
           <div class="content-editor-pane">
             <div class="content-editor-header">
-              📝 Raw XHTML Content
+              <span>📝 Raw XHTML Content</span>
+              <div class="editor-header-actions" style="display: none;">
+                <button class="editor-toggle-btn" id="toggle-raw-view" title="Toggle Rich Text Editor">
+                  ✨ Rich
+                </button>
+              </div>
             </div>
             <div class="content-editor-body">
+              <div class="rich-text-editor-container" id="rich-text-editor-container" style="display: none;"></div>
               <textarea class="raw-content-editor" id="raw-content-editor" placeholder="Raw XHTML content will appear here..."></textarea>
             </div>
           </div>
@@ -68,6 +78,30 @@ export class HTMLTemplates {
               <div class="content-preview" id="content-preview">
                 <!-- Preview content will be rendered here -->
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Get live edit tab template
+   * @returns {string} Live edit tab HTML
+   */
+  static getLiveEditTabTemplate() {
+    return `
+      <!-- Live Edit Tab -->
+      <div class="tab-content" id="live-edit-tab-content">
+        <div class="live-edit-layout-full">
+          <!-- Full Width Text Editor -->
+          <div class="live-edit-editor-pane-full">
+            <div class="content-editor-header">
+              <span>✨ Live Text Editor</span>
+
+            </div>
+            <div class="content-editor-body">
+              <div class="live-edit-editor-container" id="live-edit-editor-container"></div>
             </div>
           </div>
         </div>

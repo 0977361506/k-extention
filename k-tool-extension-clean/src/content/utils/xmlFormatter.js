@@ -9,6 +9,13 @@ export class XMLFormatter {
    * @returns {string} Formatted XML/XHTML string
    */
   static formatXHTML(xmlString, indent = "    ") {
+    console.log("🔍 XMLFormatter input:", {
+      length: xmlString.length,
+      hasUL: xmlString.includes("<ul"),
+      hasOL: xmlString.includes("<ol"),
+      hasLI: xmlString.includes("<li"),
+      preview: xmlString.substring(0, 300),
+    });
     // 1. Parse string into DOM tree
     const parser = new DOMParser();
 
@@ -110,7 +117,18 @@ export class XMLFormatter {
       processNode(node, currentIndent)
     );
 
-    return output.trim();
+    const result = output.trim();
+
+    console.log("🔍 XMLFormatter output:", {
+      length: result.length,
+      hasUL: result.includes("<ul"),
+      hasOL: result.includes("<ol"),
+      hasLI: result.includes("<li"),
+      preview: result.substring(0, 300),
+      whitespaceCount: (result.match(/\s/g) || []).length,
+    });
+
+    return result;
   }
 
   /**
@@ -144,6 +162,171 @@ export class XMLFormatter {
     // Remove ```xml and ``` markers
     let cleaned = content.replace(/^```xml\s*\n?/gm, "");
     cleaned = cleaned.replace(/\n?```\s*$/gm, "");
+
+    return cleaned;
+  }
+
+  /**
+   * Convert XHTML to HTML for Live Editor
+   * @param {string} xhtmlContent - XHTML content
+   * @returns {string} HTML content
+   */
+  static convertXHTMLToHTML(xhtmlContent) {
+    if (!xhtmlContent) return "";
+
+    console.log("🔄 Converting XHTML to HTML:", {
+      originalLength: xhtmlContent.length,
+      hasUL: xhtmlContent.includes("<ul"),
+      hasOL: xhtmlContent.includes("<ol"),
+      hasLI: xhtmlContent.includes("<li"),
+      preview: xhtmlContent.substring(0, 300),
+    });
+
+    let htmlContent = xhtmlContent;
+
+    // 1. Clean data attributes that might confuse Quill
+    htmlContent = this.cleanDataAttributes(htmlContent);
+
+    // 2. Convert XHTML specific elements to HTML
+    htmlContent = htmlContent
+      // Convert self-closing tags to HTML format
+      .replace(/<br\s*\/>/g, "<br>")
+      .replace(/<hr\s*\/>/g, "<hr>")
+      .replace(/<img([^>]*)\s*\/>/g, "<img$1>")
+      // Remove XML namespaces that Quill doesn't understand
+      .replace(/\s+xmlns[^=]*="[^"]*"/g, "")
+      // Convert XHTML entities
+      .replace(/&nbsp;/g, " ")
+      // Normalize whitespace
+      .replace(/\s+/g, " ")
+      .replace(/>\s+</g, "><")
+      .trim();
+
+    console.log("🔄 XHTML to HTML conversion result:", {
+      length: htmlContent.length,
+      hasUL: htmlContent.includes("<ul"),
+      hasOL: htmlContent.includes("<ol"),
+      hasLI: htmlContent.includes("<li"),
+      preview: htmlContent.substring(0, 300),
+      cleanedDataAttrs: !htmlContent.includes("data-start"),
+    });
+
+    return htmlContent;
+  }
+
+  /**
+   * Format content for Live Editor (compact whitespace but preserve structure)
+   * @param {string} content - Content to format
+   * @returns {string} Formatted content
+   */
+  static formatForLiveEditor(content) {
+    if (!content) return "";
+
+    console.log("🔍 Formatting for Live Editor:", {
+      originalLength: content.length,
+      hasUL: content.includes("<ul"),
+      hasOL: content.includes("<ol"),
+      hasLI: content.includes("<li"),
+      preview: content.substring(0, 500),
+    });
+
+    // 1. Convert XHTML to HTML first
+    let formatted = this.convertXHTMLToHTML(content);
+
+    // 2. Process Mermaid diagrams and convert to img tags
+    formatted = this.processMermaidToImages(formatted);
+
+    // 3. Final formatting for Quill
+    formatted = formatted
+      // Ensure proper spacing around block elements
+      .replace(/>\s*</g, "><")
+      // Add line breaks after block elements for readability
+      .replace(/(<\/(?:p|div|ul|ol|li|h[1-6])>)/g, "$1\n")
+      .replace(/(<(?:p|div|ul|ol|li|h[1-6])[^>]*>)/g, "\n$1")
+      // Clean up multiple line breaks
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
+    console.log("🔍 Live Editor formatted result:", {
+      length: formatted.length,
+      hasUL: formatted.includes("<ul"),
+      hasOL: formatted.includes("<ol"),
+      hasLI: formatted.includes("<li"),
+      hasImages: formatted.includes("<img"),
+      preview: formatted.substring(0, 500),
+      cleanedDataAttrs: !formatted.includes("data-start"),
+    });
+
+    return formatted;
+  }
+
+  /**
+   * Process Mermaid diagrams and convert to img tags
+   * @param {string} content - Content with Mermaid code blocks
+   * @returns {string} Content with Mermaid converted to img tags
+   */
+  static processMermaidToImages(content) {
+    if (!content) return "";
+
+    console.log("🎨 Processing Mermaid diagrams to images...");
+
+    // Find Mermaid code blocks
+    const mermaidRegex = /```mermaid\s*([\s\S]*?)```/g;
+    let processedContent = content;
+    let mermaidCount = 0;
+
+    let match;
+    while ((match = mermaidRegex.exec(content)) !== null) {
+      const mermaidCode = match[1].trim();
+      mermaidCount++;
+
+      console.log(
+        `🎨 Found Mermaid diagram ${mermaidCount}:`,
+        mermaidCode.substring(0, 100)
+      );
+
+      // Create placeholder img tag for Mermaid diagram
+      // We'll use a data attribute to store the Mermaid code for later processing
+      const imgTag = `<img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzMzMyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk1lcm1haWQgRGlhZ3JhbTwvdGV4dD48L3N2Zz4=" alt="Mermaid Diagram" data-mermaid-code="${encodeURIComponent(
+        mermaidCode
+      )}" style="max-width: 100%; height: auto; border: 1px dashed #ccc;" />`;
+
+      // Replace the code block with img tag
+      processedContent = processedContent.replace(match[0], imgTag);
+    }
+
+    console.log("🎨 Mermaid processing result:", {
+      mermaidCount: mermaidCount,
+      hasImages: processedContent.includes("<img"),
+      preview: processedContent.substring(0, 300),
+    });
+
+    return processedContent;
+  }
+
+  /**
+   * Clean data attributes that might confuse Quill editor
+   * @param {string} content - Content with data attributes
+   * @returns {string} Cleaned content
+   */
+  static cleanDataAttributes(content) {
+    if (!content) return "";
+
+    console.log("🧹 Cleaning data attributes...");
+
+    // Remove common data attributes that Quill doesn't need
+    let cleaned = content
+      .replace(/\s+data-start="[^"]*"/g, "")
+      .replace(/\s+data-end="[^"]*"/g, "")
+      .replace(/\s+data-uuid="[^"]*"/g, "")
+      .replace(/\s+data-id="[^"]*"/g, "")
+      .replace(/\s+data-type="[^"]*"/g, "");
+
+    console.log("🧹 Data attributes cleaned:", {
+      originalLength: content.length,
+      cleanedLength: cleaned.length,
+      removedChars: content.length - cleaned.length,
+    });
 
     return cleaned;
   }

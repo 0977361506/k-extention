@@ -6,6 +6,7 @@ import { ConfluenceEditor } from "./confluenceEditor.js";
 import { MermaidAIChat } from "./mermaidAI/mermaidAIChat.js";
 import { TextEditAI } from "./mermaidAI/textEditAI.js";
 import { MermaidRenderer } from "./utils/mermaidRenderer.js";
+import { XMLFormatter } from "./utils/xmlFormatter.js";
 
 class KToolContent {
   constructor() {
@@ -593,7 +594,7 @@ class KToolContent {
   handleGenerationComplete(result) {
     this.updateProgress(3, "completed");
     this.updateProgress(4, "completed");
-
+    // const content = XMLFormatter.cleanXMLMarkers(result);
     // Store result for preview
     this.generatedContent = result;
     console.log("✅ Generated content:", result);
@@ -618,9 +619,6 @@ class KToolContent {
             <button class="ktool-btn ktool-btn-primary" id="createPageBtn">
               📄 Create Confluence Page
             </button>
-            <button class="ktool-btn ktool-btn-secondary" id="downloadBtn">
-              💾 Download
-            </button>
           </div>
         </div>
 
@@ -632,14 +630,11 @@ class KToolContent {
 
     // Bind preview buttons
     const editContentBtn = previewTab.querySelector("#editContentBtn");
-    const createPageBtn = previewTab.querySelector("#createPageBtn");
-    const downloadBtn = previewTab.querySelector("#downloadBtn");
 
     editContentBtn.addEventListener("click", () =>
       this.handleEditContent(content)
     );
     createPageBtn.addEventListener("click", () => this.handleCreatePage());
-    downloadBtn.addEventListener("click", () => this.handleDownload());
 
     // Initialize Mermaid diagrams after content is loaded
     setTimeout(() => {
@@ -708,82 +703,6 @@ class KToolContent {
         createBtn.disabled = originalDisabled;
         createBtn.style.opacity = "1";
         createBtn.style.background = "";
-      }, 2000);
-    }
-  }
-
-  handleDownload() {
-    if (!this.generatedContent) {
-      this.showNotification("No content available to download!", "error");
-      return;
-    }
-
-    const downloadBtn = document.querySelector("#downloadBtn");
-    if (!downloadBtn) return;
-
-    // Save original button state
-    const originalText = downloadBtn.innerHTML;
-    const originalDisabled = downloadBtn.disabled;
-
-    try {
-      // Set loading state
-      downloadBtn.innerHTML = "⏳ Preparing Download...";
-      downloadBtn.disabled = true;
-      downloadBtn.style.opacity = "0.7";
-
-      const content =
-        this.generatedContent.full_storage_format ||
-        this.generatedContent.content;
-
-      // Create filename with title if available
-      const title = this.generatedContent.title || "K-Tool Generated Document";
-      const sanitizedTitle = title.replace(/[^a-z0-9]/gi, "_").toLowerCase();
-      const timestamp = new Date()
-        .toISOString()
-        .slice(0, 19)
-        .replace(/:/g, "-");
-      const filename = `${sanitizedTitle}_${timestamp}.html`;
-
-      const blob = new Blob([content], { type: "text/html;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.style.display = "none";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      // Success state
-      downloadBtn.innerHTML = "✅ Downloaded Successfully!";
-      downloadBtn.style.background = "#28a745";
-
-      this.showNotification("Document downloaded successfully!", "success");
-
-      // Restore button after 1s
-      setTimeout(() => {
-        downloadBtn.innerHTML = originalText;
-        downloadBtn.disabled = originalDisabled;
-        downloadBtn.style.opacity = "1";
-        downloadBtn.style.background = "";
-      }, 1000);
-    } catch (error) {
-      console.error("❌ Download error:", error);
-
-      // Error state
-      downloadBtn.innerHTML = "❌ Download Failed";
-      downloadBtn.style.background = "#dc3545";
-
-      this.showNotification(`Download failed: ${error.message}`, "error");
-
-      // Restore button after 2s
-      setTimeout(() => {
-        downloadBtn.innerHTML = originalText;
-        downloadBtn.disabled = originalDisabled;
-        downloadBtn.style.opacity = "1";
-        downloadBtn.style.background = "";
       }, 2000);
     }
   }

@@ -9,6 +9,8 @@ import { HTMLTemplates } from "./utils/htmlTemplates.js";
 import { MermaidRenderer } from "./utils/mermaidRenderer.js";
 import { StorageManager } from "./utils/storageManager.js";
 import { XMLFormatter } from "./utils/xmlFormatter.js";
+// import { XHTMLEditor } from "./richTextEditor/XHTMLEditor.js"; // Temporarily disabled
+import { LiveTextEditor } from "./liveEdit/LiveTextEditor.js";
 
 class ConfluenceEditor {
   constructor() {
@@ -22,6 +24,8 @@ class ConfluenceEditor {
     this.currentSelectedDiagramId = null;
     this.editorContainer = null;
     this.textEditor = null; // CodeMirror instance
+    this.richTextEditor = null; // Rich Text Editor instance
+    this.liveTextEditor = null; // Live Text Editor instance
     this.previewContainer = null;
     this.isPreviewMode = false;
     this.autoSaveTimer = null;
@@ -140,6 +144,10 @@ class ConfluenceEditor {
       this.editorContainer,
       "#content-tab"
     );
+    const liveEditTab = DOMHelpers.querySelector(
+      this.editorContainer,
+      "#live-edit-tab"
+    );
     const mermaidTab = DOMHelpers.querySelector(
       this.editorContainer,
       "#mermaid-tab"
@@ -148,18 +156,28 @@ class ConfluenceEditor {
     DOMHelpers.addEventListener(contentTab, "click", () =>
       this.switchTab("content")
     );
+    DOMHelpers.addEventListener(liveEditTab, "click", () =>
+      this.switchTab("live-edit")
+    );
     DOMHelpers.addEventListener(mermaidTab, "click", () =>
       this.switchTab("mermaid")
     );
 
-    // Content tab elements
+    // Content tab elements - Raw editor event listener (for fallback mode)
     const rawEditor = DOMHelpers.querySelector(
       this.editorContainer,
       "#raw-content-editor"
     );
-    DOMHelpers.addEventListener(rawEditor, "input", () =>
-      this.updateContentPreview()
-    );
+    if (rawEditor) {
+      DOMHelpers.addEventListener(rawEditor, "input", () => {
+        // Only update preview if raw editor is visible (not hidden)
+        if (!rawEditor.classList.contains("hidden")) {
+          this.updateContentPreview();
+          this.isModified = true;
+          this.storageManager.startAutoSave(() => this.saveContent());
+        }
+      });
+    }
 
     // Mermaid tab elements
     const mermaidSelector = DOMHelpers.querySelector(
@@ -271,6 +289,8 @@ class ConfluenceEditor {
     // Initialize tab-specific content
     if (tabName === "content") {
       this.initializeContentTab();
+    } else if (tabName === "live-edit") {
+      this.initializeLiveEditTab();
     } else if (tabName === "mermaid") {
       this.initializeMermaidTab();
     }
@@ -279,47 +299,345 @@ class ConfluenceEditor {
   }
 
   // Initialize content tab
-  initializeContentTab() {
+  async initializeContentTab() {
+    const richTextContainer = DOMHelpers.querySelector(
+      this.editorContainer,
+      "#rich-text-editor-container"
+    );
     const rawEditor = DOMHelpers.querySelector(
       this.editorContainer,
       "#raw-content-editor"
     );
 
     console.log("🔍 Initializing content tab...");
+    console.log("Rich text container found:", !!richTextContainer);
     console.log("Raw editor found:", !!rawEditor);
     console.log("Current content exists:", !!this.currentContent);
 
-    if (rawEditor && this.currentContent) {
-      // Get raw content and clean up ```xml markers
-      let rawContent =
+    if (richTextContainer && this.currentContent) {
+      try {
+        // Get raw content and clean up ```xml markers
+        let rawContent =
+          this.currentContent.full_storage_format ||
+          this.currentContent.content ||
+          "";
+
+        console.log("Raw content length:", rawContent.length);
+
+        // Clean XML markers and format for better readability
+        rawContent = XMLFormatter.cleanXMLMarkers(rawContent);
+        rawContent = XMLFormatter.formatXHTML(rawContent);
+
+        console.log("Formatted content length:", rawContent.length);
+
+        // TODO: Initialize Rich Text Editor (temporarily disabled)
+        console.log(
+          "⚠️ Rich Text Editor temporarily disabled, using raw editor"
+        );
+
+        // Hide rich text container, show raw editor
+        richTextContainer.style.display = "none";
+        if (rawEditor) {
+          rawEditor.classList.remove("hidden");
+          rawEditor.value = rawContent;
+          DOMHelpers.setContent(rawEditor, rawContent);
+        }
+
+        console.log("✅ Raw editor initialized successfully");
+        this.updateContentPreview();
+      } catch (error) {
+        console.error("❌ Failed to initialize Rich Text Editor:", error);
+
+        // Fallback to raw editor
+        if (rawEditor) {
+          console.log("🔄 Falling back to raw editor...");
+          let rawContent =
+            this.currentContent.full_storage_format ||
+            this.currentContent.content ||
+            "";
+          rawContent = XMLFormatter.cleanXMLMarkers(rawContent);
+          rawContent = XMLFormatter.formatXHTML(rawContent);
+
+          rawEditor.value = rawContent;
+          DOMHelpers.setContent(rawEditor, rawContent);
+
+          // Show raw editor, hide rich text container
+          richTextContainer.style.display = "none";
+          rawEditor.classList.remove("hidden");
+
+          this.updateContentPreview();
+        }
+      }
+    } else {
+      console.warn(
+        "⚠️ Cannot initialize content tab - missing container or currentContent"
+      );
+    }
+  }
+
+  // Setup Rich Text Editor event listeners (temporarily disabled)
+  setupRichTextEditorEvents() {
+    console.log("⚠️ Rich Text Editor events disabled");
+    return;
+  }
+
+  // Setup toggle between Rich Text and Raw view (temporarily disabled)
+  setupToggleRawView() {
+    const toggleBtn = DOMHelpers.querySelector(
+      this.editorContainer,
+      "#toggle-raw-view"
+    );
+
+    if (toggleBtn) {
+      // Hide toggle button since Rich Text Editor is disabled
+      toggleBtn.style.display = "none";
+    }
+
+    console.log("⚠️ Toggle Raw View disabled");
+  }
+
+  // Get current content from active editor
+  getCurrentEditorContent() {
+    console.log("🔍 Getting current editor content...");
+
+    // Check which tab is currently active
+    const activeTab = DOMHelpers.querySelector(
+      this.editorContainer,
+      ".confluence-editor-tab.active"
+    );
+
+    console.log("🔍 Active tab:", activeTab ? activeTab.id : "none");
+
+    if (activeTab && activeTab.id === "live-edit-tab") {
+      console.log("📝 Live Edit tab is active");
+
+      // Live Edit tab is active
+      if (this.liveTextEditor && this.liveTextEditor.isReady()) {
+        // Get content from Quill editor
+        const content = this.liveTextEditor.getHTML() || "";
+        console.log("📝 Got content from Quill editor:", {
+          length: content.length,
+          preview: content.substring(0, 200),
+          hasContent: content.length > 0,
+        });
+        return content;
+      } else {
+        console.log("⚠️ Live Text Editor not ready, trying fallback");
+
+        // Get content from fallback textarea
+        const fallbackEditor = DOMHelpers.querySelector(
+          this.editorContainer,
+          "#live-edit-editor-fallback"
+        );
+        if (fallbackEditor) {
+          const content = fallbackEditor.value || "";
+          console.log(
+            "📝 Got content from fallback editor:",
+            content.length,
+            "characters"
+          );
+          return content;
+        }
+      }
+    }
+
+    console.log("📝 Using raw editor content");
+
+    // Default to raw editor
+    const rawEditor = DOMHelpers.querySelector(
+      this.editorContainer,
+      "#raw-content-editor"
+    );
+    if (rawEditor) {
+      const content = rawEditor.value || "";
+      console.log(
+        "📝 Got content from raw editor:",
+        content.length,
+        "characters"
+      );
+      return content;
+    }
+
+    console.warn("⚠️ No editor content found");
+    return "";
+  }
+
+  // Initialize Live Edit tab
+  async initializeLiveEditTab() {
+    console.log("🔍 Initializing Live Edit tab...");
+
+    const liveEditEditorContainer = DOMHelpers.querySelector(
+      this.editorContainer,
+      "#live-edit-editor-container"
+    );
+    if (!liveEditEditorContainer) {
+      console.warn("⚠️ Live Edit editor container not found");
+      return;
+    }
+
+    try {
+      // Initialize Live Text Editor with Quill.js
+      console.log("🎨 Initializing Live Text Editor with Quill.js...");
+      this.liveTextEditor = new LiveTextEditor(liveEditEditorContainer, {
+        theme: "snow",
+      });
+
+      // Wait for editor to be ready
+      await this.waitForLiveTextEditor();
+
+      // Set initial content from current content
+      if (this.currentContent) {
+        let content =
+          this.currentContent.full_storage_format ||
+          this.currentContent.content ||
+          "";
+
+        console.log("🔍 Raw content before processing:", {
+          length: content.length,
+          preview: content.substring(0, 500),
+          hasUL: content.includes("<ul"),
+          hasOL: content.includes("<ol"),
+          hasLI: content.includes("<li"),
+          hasMermaid:
+            content.includes("mermaid") ||
+            content.includes("graph") ||
+            content.includes("flowchart"),
+        });
+
+        // Clean and format content for editing
+        content = XMLFormatter.cleanXMLMarkers(content);
+
+        // Process Mermaid diagrams immediately after cleaning
+        content = await this.processMermaidInContentSync(content);
+
+        // Format and clean XHTML content
+        content = this.normalizeHtmlString(content);
+        console.log("🎨Final content :", content);
+
+        // Set content to Live Text Editor
+        this.liveTextEditor.setHTML(content);
+      }
+
+      // Setup event listeners
+      this.setupLiveEditEventListeners();
+
+      console.log("✅ Live Edit tab initialized successfully");
+    } catch (error) {
+      console.error("❌ Failed to initialize Live Text Editor:", error);
+
+      // Fallback to simple textarea
+      this.createFallbackTextEditor(liveEditEditorContainer);
+    }
+  }
+
+  // Wait for Live Text Editor to be ready
+  async waitForLiveTextEditor() {
+    const maxWait = 5000; // 5 seconds
+    const checkInterval = 100; // 100ms
+    let waited = 0;
+
+    while (!this.liveTextEditor.isReady() && waited < maxWait) {
+      await new Promise((resolve) => setTimeout(resolve, checkInterval));
+      waited += checkInterval;
+    }
+
+    if (!this.liveTextEditor.isReady()) {
+      throw new Error("Live Text Editor failed to initialize within timeout");
+    }
+  }
+
+  // Create fallback textarea editor
+  createFallbackTextEditor(container) {
+    console.log("🔄 Creating fallback textarea editor...");
+
+    container.innerHTML = `
+      <textarea
+        class="live-edit-editor"
+        id="live-edit-editor-fallback"
+        placeholder="Enter your content here... Mermaid diagrams will be automatically rendered in the preview."
+      ></textarea>
+    `;
+
+    const textarea = container.querySelector("#live-edit-editor-fallback");
+
+    // Set initial content
+    if (this.currentContent) {
+      let content =
         this.currentContent.full_storage_format ||
         this.currentContent.content ||
         "";
-
-      console.log("Raw content length:", rawContent.length);
-
-      // Clean XML markers and format for better readability
-      rawContent = XMLFormatter.cleanXMLMarkers(rawContent);
-      rawContent = XMLFormatter.formatXHTML(rawContent);
-
-      console.log("Formatted content length:", rawContent.length);
-
-      // Set content using direct assignment and DOMHelpers
-      rawEditor.value = rawContent;
-      DOMHelpers.setContent(rawEditor, rawContent);
-
-      console.log("✅ Content set to raw editor");
-      this.updateContentPreview();
-    } else {
-      console.warn(
-        "⚠️ Cannot initialize content tab - missing rawEditor or currentContent"
-      );
+      content = XMLFormatter.cleanXMLMarkers(content);
+      content = XMLFormatter.formatXHTML(content);
+      textarea.value = content;
     }
+
+    // Setup fallback event listeners
+    this.setupFallbackEventListeners(textarea);
+  }
+
+  // Setup Live Edit event listeners
+  setupLiveEditEventListeners() {
+    if (this.liveTextEditor && this.liveTextEditor.isReady()) {
+      // Setup Quill.js event listeners
+      const editorContainer = DOMHelpers.querySelector(
+        this.editorContainer,
+        "#live-edit-editor-container"
+      );
+
+      if (editorContainer) {
+        // Debounced auto-save
+        const debouncedUpdate = this.debounce(() => {
+          this.isModified = true;
+          this.storageManager.startAutoSave(() => this.saveContent());
+        }, 500);
+
+        // Listen to custom events from LiveTextEditor
+        DOMHelpers.addEventListener(
+          editorContainer,
+          "liveTextChange",
+          debouncedUpdate
+        );
+
+        console.log("✅ Live Edit event listeners setup for Quill.js");
+      }
+    }
+  }
+
+  // Setup fallback event listeners for textarea
+  setupFallbackEventListeners(textarea) {
+    if (!textarea) return;
+
+    // Debounced auto-save
+    const debouncedUpdate = this.debounce(() => {
+      this.isModified = true;
+      this.storageManager.startAutoSave(() => this.saveContent());
+    }, 500);
+
+    // Real-time preview update
+    DOMHelpers.addEventListener(textarea, "input", debouncedUpdate);
+    DOMHelpers.addEventListener(textarea, "paste", () => {
+      setTimeout(debouncedUpdate, 100); // Delay for paste content to be processed
+    });
+
+    console.log("✅ Fallback Live Edit event listeners setup");
   }
 
   // Initialize mermaid tab
   initializeMermaidTab() {
     console.log("🔍 Initializing mermaid tab...");
+
+    // Sync content from active editor first before extracting diagrams
+    console.log("📊 Syncing content from active editor before extraction...");
+    const currentEditorContent = this.getCurrentEditorContent();
+    if (this.currentContent && currentEditorContent) {
+      console.log("📊 Updating currentContent with latest editor content:", {
+        oldLength: this.currentContent.full_storage_format?.length || 0,
+        newLength: currentEditorContent.length,
+        contentChanged:
+          this.currentContent.full_storage_format !== currentEditorContent,
+      });
+      this.currentContent.full_storage_format = currentEditorContent;
+    }
 
     // Always extract diagrams to ensure sync with current content
     console.log("📊 Extracting diagrams from current content...");
@@ -330,20 +648,280 @@ class ConfluenceEditor {
     this.populateMermaidSelector();
   }
 
-  // Update content preview
-  updateContentPreview() {
+  // Update Live Edit preview
+  async updateLiveEditPreview() {
+    const liveEditPreview = DOMHelpers.querySelector(
+      this.editorContainer,
+      "#live-edit-preview"
+    );
+
+    if (!liveEditPreview) return;
+
+    // Get content from either Quill editor or fallback textarea
+    let content = "";
+
+    if (this.liveTextEditor && this.liveTextEditor.isReady()) {
+      // Get content from Quill editor
+      content = this.liveTextEditor.getHTML();
+    } else {
+      // Get content from fallback textarea
+      const fallbackEditor = DOMHelpers.querySelector(
+        this.editorContainer,
+        "#live-edit-editor-fallback"
+      );
+      if (fallbackEditor) {
+        content = fallbackEditor.value;
+      }
+    }
+
+    // Show loading state
+    liveEditPreview.classList.add("loading");
+
+    try {
+      // Process content and render Mermaid diagrams
+      const processedContent = await this.processLiveEditContent(content);
+
+      // Set processed content
+      DOMHelpers.setContent(liveEditPreview, processedContent, true);
+
+      // Render Mermaid diagrams
+      await this.renderMermaidInLivePreview();
+
+      console.log("✅ Live Edit preview updated");
+    } catch (error) {
+      console.error("❌ Failed to update Live Edit preview:", error);
+      DOMHelpers.setContent(
+        liveEditPreview,
+        `<p style="color: red;">❌ Preview Error: ${error.message}</p>`,
+        true
+      );
+    } finally {
+      // Remove loading state
+      liveEditPreview.classList.remove("loading");
+    }
+  }
+
+  // Process Live Edit content for preview
+  async processLiveEditContent(content) {
+    if (!content) {
+      return '<div class="preview-placeholder"><p>📝 Start typing to see live preview...</p></div>';
+    }
+
+    // Convert basic markdown-like syntax to HTML
+    let processedContent = content;
+
+    // Convert headers
+    processedContent = processedContent.replace(/^### (.*$)/gim, "<h3>$1</h3>");
+    processedContent = processedContent.replace(/^## (.*$)/gim, "<h2>$1</h2>");
+    processedContent = processedContent.replace(/^# (.*$)/gim, "<h1>$1</h1>");
+
+    // Convert paragraphs
+    processedContent = processedContent.replace(/\n\n/g, "</p><p>");
+    processedContent = "<p>" + processedContent + "</p>";
+
+    // Convert line breaks
+    processedContent = processedContent.replace(/\n/g, "<br>");
+
+    // Clean up empty paragraphs
+    processedContent = processedContent.replace(/<p><\/p>/g, "");
+    processedContent = processedContent.replace(/<p>\s*<\/p>/g, "");
+
+    return processedContent;
+  }
+
+  // Render Mermaid diagrams in Live Edit preview
+  async renderMermaidInLivePreview() {
+    const liveEditPreview = DOMHelpers.querySelector(
+      this.editorContainer,
+      "#live-edit-preview"
+    );
+
+    if (!liveEditPreview) return;
+
+    // Find all mermaid code blocks
+    const mermaidBlocks = liveEditPreview.querySelectorAll("code");
+
+    for (const block of mermaidBlocks) {
+      const content = block.textContent.trim();
+
+      // Check if it's a mermaid diagram
+      if (this.isMermaidDiagram(content)) {
+        try {
+          console.log("🎨 Rendering Mermaid diagram in Live Edit preview");
+
+          // Load Mermaid if not already loaded
+          await MermaidRenderer.loadMermaidScript();
+
+          // Create mermaid container
+          const mermaidContainer = document.createElement("div");
+          mermaidContainer.className = "mermaid";
+          mermaidContainer.textContent = content;
+
+          // Replace code block with mermaid container
+          block.parentNode.replaceChild(mermaidContainer, block);
+
+          // Initialize mermaid
+          if (window.mermaid) {
+            window.mermaid.initialize({
+              startOnLoad: false,
+              securityLevel: "loose",
+              theme: "default",
+            });
+
+            // Render the diagram
+            await window.mermaid.init(undefined, mermaidContainer);
+          }
+        } catch (error) {
+          console.error("❌ Failed to render Mermaid diagram:", error);
+          // Show error in place of diagram
+          const errorDiv = document.createElement("div");
+          errorDiv.style.cssText =
+            "color: red; padding: 10px; border: 1px solid red; border-radius: 4px; margin: 10px 0;";
+          errorDiv.textContent = `❌ Mermaid Error: ${error.message}`;
+          block.parentNode.replaceChild(errorDiv, block);
+        }
+      }
+    }
+  }
+
+  // Check if content is a Mermaid diagram
+  isMermaidDiagram(content) {
+    const mermaidKeywords = [
+      "graph",
+      "flowchart",
+      "sequenceDiagram",
+      "classDiagram",
+      "stateDiagram",
+      "erDiagram",
+      "journey",
+      "gantt",
+      "pie",
+      "gitgraph",
+      "mindmap",
+      "timeline",
+    ];
+
+    const firstLine = content.split("\n")[0].trim().toLowerCase();
+    return mermaidKeywords.some((keyword) => firstLine.includes(keyword));
+  }
+
+  // Format Live Edit content
+  formatLiveEditContent() {
+    try {
+      if (this.liveTextEditor && this.liveTextEditor.isReady()) {
+        // Format content in Quill editor
+        let content = this.liveTextEditor.getHTML();
+        content = XMLFormatter.formatXHTML(content);
+        this.liveTextEditor.setHTML(content);
+      } else {
+        // Format content in fallback textarea
+        const fallbackEditor = DOMHelpers.querySelector(
+          this.editorContainer,
+          "#live-edit-editor-fallback"
+        );
+        if (fallbackEditor) {
+          let content = fallbackEditor.value;
+          content = XMLFormatter.formatXHTML(content);
+          fallbackEditor.value = content;
+        }
+      }
+
+      this.updateLiveEditPreview();
+      console.log("✅ Live Edit content formatted");
+    } catch (error) {
+      console.error("❌ Failed to format Live Edit content:", error);
+    }
+  }
+
+  // Sync Live Edit with Raw Content
+  syncLiveEditWithRawContent() {
     const rawEditor = DOMHelpers.querySelector(
       this.editorContainer,
       "#raw-content-editor"
     );
+
+    if (!rawEditor) return;
+
+    try {
+      // Get content from raw editor
+      const rawContent = rawEditor.value;
+
+      // Set to live edit editor
+      if (this.liveTextEditor && this.liveTextEditor.isReady()) {
+        // Set content to Quill editor
+        this.liveTextEditor.setHTML(rawContent);
+      } else {
+        // Set content to fallback textarea
+        const fallbackEditor = DOMHelpers.querySelector(
+          this.editorContainer,
+          "#live-edit-editor-fallback"
+        );
+        if (fallbackEditor) {
+          fallbackEditor.value = rawContent;
+        }
+      }
+
+      // Update preview
+      this.updateLiveEditPreview();
+
+      console.log("✅ Live Edit synced with Raw Content");
+    } catch (error) {
+      console.error("❌ Failed to sync Live Edit with Raw Content:", error);
+    }
+  }
+
+  // Toggle Live Edit fullscreen
+  toggleLiveEditFullscreen() {
+    const liveEditPreview = DOMHelpers.querySelector(
+      this.editorContainer,
+      "#live-edit-preview"
+    );
+
+    if (!liveEditPreview) return;
+
+    if (liveEditPreview.classList.contains("fullscreen")) {
+      liveEditPreview.classList.remove("fullscreen");
+      liveEditPreview.style.cssText = "";
+    } else {
+      liveEditPreview.classList.add("fullscreen");
+      liveEditPreview.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 10001;
+        background: white;
+        padding: 20px;
+        overflow-y: auto;
+      `;
+    }
+  }
+
+  // Debounce utility function
+  debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+  // Update content preview
+  updateContentPreview() {
     const preview = DOMHelpers.querySelector(
       this.editorContainer,
       "#content-preview"
     );
 
-    if (!rawEditor || !preview) return;
+    if (!preview) return;
 
-    const content = DOMHelpers.getContent(rawEditor);
+    // Get content from the currently active editor
+    const content = this.getCurrentEditorContent();
 
     // Update current content
     if (this.currentContent) {
@@ -976,15 +1554,35 @@ class ConfluenceEditor {
   }
 
   extractMermaidDiagrams() {
+    console.log("🔍 Extracting Mermaid diagrams...");
+
     if (!this.currentContent?.full_storage_format) {
+      console.warn("⚠️ No content to extract diagrams from:", {
+        hasCurrentContent: !!this.currentContent,
+        hasFullStorageFormat: !!this.currentContent?.full_storage_format,
+        contentLength: this.currentContent?.full_storage_format?.length || 0,
+      });
       this.mermaidDiagrams = [];
       this.mermaidDiagramsMap = new Map();
       return;
     }
 
+    console.log("📊 Extracting from content:", {
+      contentLength: this.currentContent.full_storage_format.length,
+      contentPreview: this.currentContent.full_storage_format.substring(0, 300),
+      hasMermaidKeyword:
+        this.currentContent.full_storage_format.includes("mermaid"),
+    });
+
     const { diagrams, diagramsMap } = MermaidRenderer.extractMermaidDiagrams(
       this.currentContent.full_storage_format
     );
+
+    console.log("📊 Extraction results:", {
+      diagramsCount: diagrams.length,
+      diagramsMapSize: diagramsMap.size,
+      diagramTitles: diagrams.map((d) => d.title),
+    });
 
     this.mermaidDiagrams = diagrams;
     this.mermaidDiagramsMap = diagramsMap;
@@ -1004,12 +1602,66 @@ class ConfluenceEditor {
     console.log("💾 Saving changes...");
 
     try {
-      // Sync all content sources
-      this.currentContent = this.contentSynchronizer.syncAllContent(
-        this.currentContent,
+      // Get current content from active editor (Rich Text or Raw)
+      const currentEditorContent = this.getCurrentEditorContent();
+
+      console.log("💾 Save process - Current editor content:", {
+        length: currentEditorContent.length,
+        hasContent: currentEditorContent.length > 0,
+        preview: currentEditorContent.substring(0, 300),
+      });
+
+      // Update current content with editor content
+      if (this.currentContent && currentEditorContent) {
+        console.log("💾 Before update - currentContent.full_storage_format:", {
+          length: this.currentContent.full_storage_format?.length || 0,
+          preview:
+            this.currentContent.full_storage_format?.substring(0, 200) ||
+            "empty",
+        });
+
+        this.currentContent.full_storage_format = currentEditorContent;
+
+        console.log("💾 After update - currentContent.full_storage_format:", {
+          length: this.currentContent.full_storage_format?.length || 0,
+          preview:
+            this.currentContent.full_storage_format?.substring(0, 200) ||
+            "empty",
+        });
+
+        console.log(
+          "📝 Updated content from editor:",
+          currentEditorContent.length,
+          "characters"
+        );
+      } else {
+        console.warn("⚠️ Cannot update content:", {
+          hasCurrentContent: !!this.currentContent,
+          hasEditorContent: !!currentEditorContent,
+        });
+      }
+
+      // Check which tab is active to decide sync strategy
+      const activeTab = DOMHelpers.querySelector(
         this.editorContainer,
-        this.mermaidDiagrams
+        ".confluence-editor-tab.active"
       );
+
+      if (activeTab && activeTab.id === "live-edit-tab") {
+        console.log(
+          "💾 Live Edit tab active - skipping syncAllContent to preserve editor content"
+        );
+        // Don't sync from raw editor when Live Edit is active
+        // Content was already updated from Live Text Editor above
+      } else {
+        console.log("💾 Raw/other tab active - syncing all content sources");
+        // Sync all content sources (includes raw editor sync)
+        this.currentContent = this.contentSynchronizer.syncAllContent(
+          this.currentContent,
+          this.editorContainer,
+          this.mermaidDiagrams
+        );
+      }
 
       // Validate content before saving
       const validation = this.contentSynchronizer.validateContent(
@@ -1180,6 +1832,20 @@ class ConfluenceEditor {
     // Stop auto-save
     this.storageManager.stopAutoSave();
 
+    // Destroy Rich Text Editor
+    if (this.richTextEditor) {
+      console.log("🗑️ Destroying Rich Text Editor...");
+      this.richTextEditor.destroy();
+      this.richTextEditor = null;
+    }
+
+    // Destroy Live Text Editor
+    if (this.liveTextEditor) {
+      console.log("🗑️ Destroying Live Text Editor...");
+      this.liveTextEditor.destroy();
+      this.liveTextEditor = null;
+    }
+
     if (this.editorContainer) {
       DOMHelpers.removeElement(this.editorContainer);
       this.editorContainer = null;
@@ -1209,6 +1875,146 @@ class ConfluenceEditor {
   // Check if editor is currently open
   isOpen() {
     return this.isEditorOpen;
+  }
+
+  /**
+   * Format and clean XHTML content (remove whitespace, normalize structure)
+   */
+  normalizeHtmlString(html) {
+    if (!html || typeof html !== "string") {
+      return html;
+    }
+
+    // 1. Loại bỏ các dòng trống đầu/cuối chuỗi
+    let cleanedHtml = html.trim();
+
+    // 2. Thay thế tất cả các khoảng trắng, tab, và dòng mới liên tiếp (ví dụ: \n\t  )
+    // bên trong các thẻ HTML hoặc giữa các thẻ
+    // thành MỘT khoảng trắng duy nhất.
+    // [ \t\n\r]+ là regex bắt tất cả các loại khoảng trắng
+    cleanedHtml = cleanedHtml.replace(/[ \t\n\r]+/g, " ");
+
+    // 3. Xóa khoảng trắng ngay trước và sau các thẻ HTML
+    // (Điều này thường loại bỏ khoảng trắng giữa các thẻ block như </div> <div>)
+    cleanedHtml = cleanedHtml.replace(/> </g, "><");
+
+    // 4. (Tùy chọn) Thêm lại các dấu xuống dòng hợp lí sau các thẻ BLOCK
+    // Ví dụ: sau </div> hoặc </p> để giữ cấu trúc dễ đọc.
+    // Nếu không cần cấu trúc block, bạn có thể bỏ qua bước này.
+    // cleanedHtml = cleanedHtml.replace(/></g, '>\n<');
+
+    return cleanedHtml;
+  }
+
+  /**
+   * Process Mermaid diagrams in content synchronously (convert to img tags)
+   */
+  async processMermaidInContentSync(content) {
+    try {
+      console.log("🔍 Processing Mermaid diagrams in content (sync)...");
+
+      // Use extractMermaidDiagrams to find all Mermaid content
+      const { diagrams } = MermaidRenderer.extractMermaidDiagrams(content);
+
+      if (diagrams.length === 0) {
+        console.log("ℹ️ No Mermaid diagrams found in content");
+        return content;
+      }
+
+      let processedContent = content;
+      console.log(`🎨 Found ${diagrams.length} Mermaid diagrams to process`);
+
+      // Process each diagram
+      for (let i = 0; i < diagrams.length; i++) {
+        const diagram = diagrams[i];
+        console.log(
+          `🎨 Processing Mermaid diagram ${i + 1}/${diagrams.length}:`,
+          diagram.code.substring(0, 100)
+        );
+
+        try {
+          // Generate real Mermaid diagram as base64 image
+          const imageBase64 = await this.generateMermaidImage(diagram.code);
+
+          if (imageBase64) {
+            // Replace original macro with image
+            const imageHtml = `<img src="${imageBase64}" alt="Mermaid Diagram" style="max-width: 100%; height: auto;" />`;
+            processedContent = processedContent.replace(
+              diagram.originalMatch,
+              imageHtml
+            );
+            console.log(`✅ Mermaid diagram ${i + 1} converted to real image`);
+          } else {
+            // Fallback to placeholder if generation fails
+            const placeholderImg = `<img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzMzMyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk1lcm1haWQgRGlhZ3JhbTwvdGV4dD48L3N2Zz4=" alt="Mermaid Diagram (Placeholder)" style="max-width: 100%; height: auto; border: 1px dashed #ccc;" />`;
+            processedContent = processedContent.replace(
+              diagram.originalMatch,
+              placeholderImg
+            );
+            console.log(
+              `⚠️ Mermaid diagram ${i + 1} replaced with placeholder`
+            );
+          }
+        } catch (error) {
+          console.warn(`⚠️ Failed to process Mermaid diagram ${i + 1}:`, error);
+          // Keep original macro if conversion fails
+        }
+      }
+
+      console.log(
+        `🎨 Processed ${diagrams.length} Mermaid diagrams in content`,
+        processedContent
+      );
+      return processedContent;
+    } catch (error) {
+      console.error("❌ Error processing Mermaid in content:", error);
+      return content; // Return original content if processing fails
+    }
+  }
+  /**
+   * Generate Mermaid diagram as base64 image
+   */
+  async generateMermaidImage(mermaidCode) {
+    try {
+      if (!window.mermaid) {
+        console.warn("⚠️ Mermaid not available");
+        return null;
+      }
+
+      // Create temporary container
+      const tempContainer = document.createElement("div");
+      tempContainer.style.position = "absolute";
+      tempContainer.style.left = "-9999px";
+      tempContainer.style.top = "-9999px";
+      tempContainer.style.width = "800px";
+      tempContainer.style.height = "600px";
+      document.body.appendChild(tempContainer);
+
+      try {
+        // Generate unique ID
+        const diagramId = `mermaid-temp-${Date.now()}`;
+
+        // Render Mermaid diagram
+        const { svg } = await window.mermaid.render(diagramId, mermaidCode);
+
+        // Convert SVG to base64
+        const base64 =
+          "data:image/svg+xml;base64," +
+          btoa(
+            encodeURIComponent(svg).replace(/%([0-9A-F]{2})/g, (_, p1) =>
+              String.fromCharCode(parseInt(p1, 16))
+            )
+          );
+
+        return base64;
+      } finally {
+        // Clean up temporary container
+        document.body.removeChild(tempContainer);
+      }
+    } catch (error) {
+      console.error("❌ Failed to generate Mermaid image:", error);
+      return null;
+    }
   }
 
   // Get current content

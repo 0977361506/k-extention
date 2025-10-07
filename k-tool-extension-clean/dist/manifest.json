@@ -30,8 +30,8 @@
         "https://*.atlassian.net/*",
         "https://*.confluence.com/*"
       ],
-      "js": ["lib/mermaid.min.js", "content.js"],
-      "css": ["content.css", "mermaidAIChat.css"],
+      "js": ["lib/mermaid.min.js", "lib/quill.min.js", "content.js"],
+      "css": ["lib/quill.snow.css", "content.css", "mermaidAIChat.css"],
       "run_at": "document_idle"
     }
   ],
@@ -43,7 +43,8 @@
         "lib/mermaid.min.js",
         "lib/mermaid.esm.min.mjs",
         "src/content/mermaidAI/textEditAI.css",
-        "src/content/mermaidAI/dragUtils.js"
+        "src/content/mermaidAI/dragUtils.js",
+        "src/content/richTextEditor/*"
       ],
       "matches": ["<all_urls>"]
     }
