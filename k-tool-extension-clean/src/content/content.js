@@ -1,11 +1,11 @@
 // K-Tool Extension Content Script
 import { ApiClient, ConfluenceApi } from "../shared/api.js";
 import { PROGRESS_STEPS } from "../shared/constants.js";
-import { StorageManager } from "../shared/storage.js";
 import { ConfluenceEditor } from "./confluenceEditor.js";
 import { MermaidAIChat } from "./mermaidAI/mermaidAIChat.js";
 import { TextEditAI } from "./mermaidAI/textEditAI.js";
 import { MermaidRenderer } from "./utils/mermaidRenderer.js";
+import { StorageManager } from "./utils/storageManager.js";
 import { XMLFormatter } from "./utils/xmlFormatter.js";
 
 class KToolContent {
@@ -18,6 +18,7 @@ class KToolContent {
     this.confluenceEditor = null;
     this.mermaidAIChat = null;
     this.textEditAI = null;
+    this.storageManager = new StorageManager();
     this.init();
   }
 
@@ -375,6 +376,26 @@ class KToolContent {
   }
 
   async handleGenerate() {
+    console.log("🔄 Starting new document generation...");
+
+    // Clear all localStorage to avoid conflicts with previous data
+    try {
+      const result = await this.storageManager.clearAllKToolData();
+      console.log(
+        "🧹 Cleared all previous localStorage data:",
+        result.clearedKeys
+      );
+
+      if (result.failedKeys.length > 0) {
+        console.warn("⚠️ Some keys failed to clear:", result.failedKeys);
+      }
+    } catch (clearError) {
+      console.warn(
+        "⚠️ Failed to clear previous localStorage data:",
+        clearError
+      );
+    }
+
     const baDocUrl = document.getElementById("baDocUrl").value.trim();
     const additionalNotes = document
       .getElementById("additionalNotes")
@@ -594,7 +615,9 @@ class KToolContent {
   handleGenerationComplete(result) {
     this.updateProgress(3, "completed");
     this.updateProgress(4, "completed");
-    // const content = XMLFormatter.cleanXMLMarkers(result);
+    const content = XMLFormatter.cleanXMLMarkers(
+      result.full_storage_format ?? ""
+    );
     // Store result for preview
     this.generatedContent = result;
     console.log("✅ Generated content:", result);
@@ -662,10 +685,13 @@ class KToolContent {
       }
 
       const title = `K-Tool Generated Document - ${new Date().toLocaleDateString()}`;
-      const content =
+      let content =
         this.generatedContent.full_storage_format ||
         this.generatedContent.content;
 
+      // Replace Mermaid images with original code before sending to API
+      content = await this.replaceMermaidImagesWithOriginalCode(content);
+      console.warn("Content after replace:", content);
       // Extract parent page ID from settings if available
       let parentId = null;
       if (this.settings.documentUrl) {
@@ -704,6 +730,94 @@ class KToolContent {
         createBtn.style.opacity = "1";
         createBtn.style.background = "";
       }, 2000);
+    }
+  }
+
+  /**
+   * Replace Mermaid images with original code before sending to Confluence API
+   * @param {string} content - Content with Mermaid images
+   * @returns {Promise<string>} Content with original Mermaid macros
+   */
+  async replaceMermaidImagesWithOriginalCode(content) {
+    try {
+      console.log("🔄 Replacing Mermaid images with original code...");
+
+      // Get diagram mappings from storage
+      const diagramMappings = await this.storageManager.getItem(
+        this.storageManager.constructor.STORAGE_KEYS.MERMAID_DIAGRAM_MAPPINGS
+      );
+
+      if (!diagramMappings || Object.keys(diagramMappings).length === 0) {
+        console.log(
+          "ℹ️ No diagram mappings found in storage, returning content as-is"
+        );
+        return content;
+      }
+
+      console.log(
+        `📊 Found ${
+          Object.keys(diagramMappings).length
+        } diagram mappings in storage`
+      );
+
+      // Parse content as DOM for reliable HTML manipulation
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(content, "text/html");
+      let replacementCount = 0;
+
+      // Replace each image with its original code using DOM
+      for (const [diagramId, mapping] of Object.entries(diagramMappings)) {
+        // Find img elements with this diagram ID
+        const imgElements = doc.querySelectorAll(
+          `img[id="${diagramId}"], img[data-mermaid-id="${diagramId}"]`
+        );
+
+        if (imgElements.length > 0) {
+          console.log(
+            `🔄 Replacing ${imgElements.length} image(s) for diagram ${diagramId}`
+          );
+
+          // Replace each found image with original code text
+          imgElements.forEach((imgElement) => {
+            // Create a text node with the original code
+            // Chèn đoạn code HTML gốc vào vị trí của ảnh
+            imgElement.insertAdjacentHTML("beforebegin", mapping.content);
+            console.warn("originCode", mapping.content);
+            // Xoá thẻ ảnh
+            imgElement.remove();
+            replacementCount++;
+          });
+
+          console.log(
+            `✅ Replaced ${imgElements.length} image(s) for diagram ${diagramId} with original Mermaid macro`
+          );
+        } else {
+          console.log(`ℹ️ No images found for diagram ${diagramId}`);
+        }
+      }
+
+      // Get the processed content back as string
+      const processedContent = doc.body.innerHTML;
+
+      console.log(
+        `🎨 Completed Mermaid image replacement: ${replacementCount} images replaced`
+      );
+
+      // Clean up storage after successful replacement
+      // try {
+      //   await this.storageManager.removeItem(
+      //     this.storageManager.constructor.STORAGE_KEYS.MERMAID_DIAGRAM_MAPPINGS
+      //   );
+      //   console.log("🧹 Cleaned up diagram mappings from storage");
+      // } catch (cleanupError) {
+      //   console.warn("⚠️ Failed to clean up diagram mappings:", cleanupError);
+      // }
+
+      return processedContent;
+    } catch (error) {
+      console.error("❌ Error replacing Mermaid images:", error);
+      // Return original content if replacement fails
+      return content;
     }
   }
 

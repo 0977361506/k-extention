@@ -98,7 +98,6 @@ export class HTMLTemplates {
           <div class="live-edit-editor-pane-full">
             <div class="content-editor-header">
               <span>✨ Live Text Editor</span>
-
             </div>
             <div class="content-editor-body">
               <div class="live-edit-editor-container" id="live-edit-editor-container"></div>

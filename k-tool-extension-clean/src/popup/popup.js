@@ -1,5 +1,5 @@
 // K-Tool Extension Popup Script
-import { StorageManager } from "../shared/storage.js";
+import { StorageManager } from "../content/utils/storageManager.js";
 
 class PopupManager {
   constructor() {
