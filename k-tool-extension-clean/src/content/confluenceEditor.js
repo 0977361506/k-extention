@@ -288,8 +288,10 @@ class ConfluenceEditor {
     // Initialize tab-specific content
     if (tabName === "content") {
       this.initializeContentTab();
+      this.initializeMermaidTab();
     } else if (tabName === "live-edit") {
       this.initializeLiveEditTab();
+      this.initializeMermaidTab();
     } else if (tabName === "mermaid") {
       this.initializeMermaidTab();
     }
@@ -1151,6 +1153,14 @@ class ConfluenceEditor {
     let diagramData = this.mermaidDiagramsMap.get(diagramId);
     let diagram = this.mermaidDiagrams.find((d) => d.id === diagramId);
 
+    // If found in current content, ensure originCode is set
+    if (diagramData && diagram) {
+      // Ensure diagram has originCode (use originalCode from extraction or current code)
+      if (!diagram.originCode) {
+        diagram.originCode = diagram.originalCode || diagram.code;
+      }
+    }
+
     // If not found in current content, try localStorage
     if (!diagramData) {
       console.log(
@@ -1167,6 +1177,7 @@ class ConfluenceEditor {
           title: diagramData.title,
           type: diagramData.type,
           code: diagramData.content,
+          originCode: diagramData.originCode, // Use the stored originCode (match[0])
         };
       } else {
         console.error(
@@ -1204,12 +1215,14 @@ class ConfluenceEditor {
           );
           if (currentDiagramData) {
             currentDiagramData.content = newCode;
+            // Keep originCode unchanged (it should be the original match[0])
           } else {
             // If not in current content, add it to the map
             this.mermaidDiagramsMap.set(this.currentSelectedDiagramId, {
               title: this.currentSelectedDiagram.title,
               type: this.currentSelectedDiagram.type,
               content: newCode,
+              originCode: this.currentSelectedDiagram.originCode, // Use the original match[0]
             });
           }
 
@@ -1220,6 +1233,7 @@ class ConfluenceEditor {
             title: this.currentSelectedDiagram.title,
             type: this.currentSelectedDiagram.type,
             content: newCode,
+            originCode: this.currentSelectedDiagram.originCode, // Keep the original match[0] unchanged
             timestamp: Date.now(),
           });
           this.storageManager.saveMermaidDiagramMappings(storedDiagrams);

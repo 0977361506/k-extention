@@ -611,6 +611,7 @@ export class StorageManager {
           title: diagramData.title,
           type: diagramData.type,
           content: diagramData.content,
+          originCode: diagramData.originCode, // Store the original match[0] exactly as is
           timestamp: Date.now(),
         };
       });

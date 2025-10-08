@@ -261,15 +261,13 @@ export class MermaidRenderer {
       diagrams.push(diagramRecord);
       diagramsMap.set(diagramId, {
         content: code,
+        originCode: match[0], // Store original code for reference
         type: type,
         index: index,
         title: diagramRecord.title,
       });
 
-      console.log(`✅ Extracted diagram ${index}:`, {
-        type,
-        code: code.substring(0, 50) + "...",
-      });
+      console.log(`✅ match[0] for diagram ${index}:`, match[0]);
 
       index++;
     }

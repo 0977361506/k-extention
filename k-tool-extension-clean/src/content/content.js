@@ -760,44 +760,56 @@ class KToolContent {
         } diagram mappings in storage`
       );
 
-      // Parse content as DOM for reliable HTML manipulation
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(content, "text/html");
+      let processedContent = content;
       let replacementCount = 0;
 
-      // Replace each image with its original code using DOM
+      // Replace each image with its original code using string replacement
       for (const [diagramId, mapping] of Object.entries(diagramMappings)) {
-        // Find img elements with this diagram ID
-        const imgElements = doc.querySelectorAll(
-          `img[id="${diagramId}"], img[data-mermaid-id="${diagramId}"]`
-        );
+        console.log(`🔄 Processing diagram ${diagramId}`);
+        console.warn("originalCode:", mapping.content);
 
-        if (imgElements.length > 0) {
-          console.log(
-            `🔄 Replacing ${imgElements.length} image(s) for diagram ${diagramId}`
-          );
+        // Create regex patterns to find img tags with this diagram ID
+        const imgPatterns = [
+          // Pattern for id attribute
+          new RegExp(`<img[^>]*\\sid="${diagramId}"[^>]*>`, "gi"),
+          // Pattern for data-mermaid-id attribute
+          new RegExp(`<img[^>]*\\sdata-mermaid-id="${diagramId}"[^>]*>`, "gi"),
+          // Pattern for both attributes (more flexible)
+          new RegExp(
+            `<img[^>]*(?:id="${diagramId}"|data-mermaid-id="${diagramId}")[^>]*>`,
+            "gi"
+          ),
+        ];
 
-          // Replace each found image with original code text
-          imgElements.forEach((imgElement) => {
-            // Create a text node with the original code
-            // Chèn đoạn code HTML gốc vào vị trí của ảnh
-            imgElement.insertAdjacentHTML("beforebegin", mapping.content);
-            console.warn("originCode", mapping.content);
-            // Xoá thẻ ảnh
-            imgElement.remove();
-            replacementCount++;
-          });
+        let foundMatch = false;
 
-          console.log(
-            `✅ Replaced ${imgElements.length} image(s) for diagram ${diagramId} with original Mermaid macro`
-          );
-        } else {
+        // Try each pattern
+        for (const pattern of imgPatterns) {
+          const matches = processedContent.match(pattern);
+          if (matches && matches.length > 0) {
+            console.log(
+              `🔍 Found ${matches.length} image(s) for diagram ${diagramId} with pattern`
+            );
+
+            // Replace all matches with original content
+            processedContent = processedContent.replace(
+              pattern,
+              mapping.originCode
+            );
+            replacementCount += matches.length;
+            foundMatch = true;
+
+            console.log(
+              `✅ Replaced ${matches.length} image(s) for diagram ${diagramId} with original Mermaid code`
+            );
+            break; // Stop after first successful pattern
+          }
+        }
+
+        if (!foundMatch) {
           console.log(`ℹ️ No images found for diagram ${diagramId}`);
         }
       }
-
-      // Get the processed content back as string
-      const processedContent = doc.body.innerHTML;
 
       console.log(
         `🎨 Completed Mermaid image replacement: ${replacementCount} images replaced`
