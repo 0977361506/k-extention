@@ -4,7 +4,7 @@ console.log('🚀 K-Tool Extension Background Script loaded');
 // Handle extension installation
 chrome.runtime.onInstalled.addListener((details) => {
   console.log('📦 K-Tool Extension installed:', details.reason);
-  
+
   if (details.reason === 'install') {
     // Set default settings on first install
     chrome.storage.sync.set({
@@ -25,20 +25,20 @@ chrome.runtime.onInstalled.addListener((details) => {
 // Handle messages from content scripts
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('📨 Background received message:', request);
-  
+
   switch (request.action) {
     case 'getSettings':
       handleGetSettings(sendResponse);
       return true; // Keep message channel open for async response
-      
+
     case 'saveSettings':
       handleSaveSettings(request.settings, sendResponse);
       return true;
-      
+
     case 'checkPermissions':
       handleCheckPermissions(sendResponse);
       return true;
-      
+
     default:
       console.warn('❓ Unknown action:', request.action);
       sendResponse({ success: false, error: 'Unknown action' });
@@ -49,15 +49,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 async function handleGetSettings(sendResponse) {
   try {
     const result = await chrome.storage.sync.get(['extensionSettings']);
-    sendResponse({ 
-      success: true, 
-      settings: result.extensionSettings || {} 
+    sendResponse({
+      success: true,
+      settings: result.extensionSettings || {}
     });
   } catch (error) {
     console.error('❌ Error getting settings:', error);
-    sendResponse({ 
-      success: false, 
-      error: error.message 
+    sendResponse({
+      success: false,
+      error: error.message
     });
   }
 }
@@ -69,9 +69,9 @@ async function handleSaveSettings(settings, sendResponse) {
     sendResponse({ success: true });
   } catch (error) {
     console.error('❌ Error saving settings:', error);
-    sendResponse({ 
-      success: false, 
-      error: error.message 
+    sendResponse({
+      success: false,
+      error: error.message
     });
   }
 }
@@ -80,15 +80,15 @@ async function handleSaveSettings(settings, sendResponse) {
 async function handleCheckPermissions(sendResponse) {
   try {
     const permissions = await chrome.permissions.getAll();
-    sendResponse({ 
-      success: true, 
-      permissions: permissions 
+    sendResponse({
+      success: true,
+      permissions: permissions
     });
   } catch (error) {
     console.error('❌ Error checking permissions:', error);
-    sendResponse({ 
-      success: false, 
-      error: error.message 
+    sendResponse({
+      success: false,
+      error: error.message
     });
   }
 }
@@ -97,13 +97,13 @@ async function handleCheckPermissions(sendResponse) {
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.url) {
     // Check if this is a Confluence page
-    const isConfluencePage = tab.url.includes('confluence') || 
+    const isConfluencePage = tab.url.includes('confluence') ||
                             tab.url.includes('atlassian') ||
                             tab.url.includes('localhost:8090');
-    
+
     if (isConfluencePage) {
       console.log('🔍 Confluence page detected:', tab.url);
-      
+
       // Inject content script if not already injected
       chrome.scripting.executeScript({
         target: { tabId: tabId },
@@ -128,7 +128,7 @@ function checkKToolInjection() {
 chrome.storage.onChanged.addListener((changes, namespace) => {
   if (namespace === 'sync' && changes.extensionSettings) {
     console.log('⚙️ Settings changed:', changes.extensionSettings);
-    
+
     // Notify all content scripts about settings change
     chrome.tabs.query({}, (tabs) => {
       tabs.forEach(tab => {

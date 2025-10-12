@@ -6,7 +6,6 @@ import { MermaidAIChat } from "./mermaidAI/mermaidAIChat.js";
 import { TextEditAI } from "./mermaidAI/textEditAI.js";
 import { MermaidRenderer } from "./utils/mermaidRenderer.js";
 import { StorageManager } from "./utils/storageManager.js";
-import { XMLFormatter } from "./utils/xmlFormatter.js";
 
 class KToolContent {
   constructor() {
@@ -23,11 +22,8 @@ class KToolContent {
   }
 
   async init() {
-    console.log("🚀 K-Tool Content Script initializing...");
-
     // Check if already injected
     if (document.getElementById("ktool-root")) {
-      console.log("🔍 K-Tool already injected, skipping...");
       return;
     }
 
@@ -42,9 +38,7 @@ class KToolContent {
 
     // Initialize Confluence Editor
     try {
-      console.log("🔧 Initializing ConfluenceEditor...");
       this.confluenceEditor = new ConfluenceEditor();
-      console.log("✅ ConfluenceEditor initialized:", this.confluenceEditor);
     } catch (error) {
       console.error("❌ Error initializing ConfluenceEditor:", error);
       this.confluenceEditor = null;
@@ -52,10 +46,8 @@ class KToolContent {
 
     // Initialize Mermaid AI Chat
     try {
-      console.log("🎨 Initializing MermaidAIChat...");
       const $ = window.jQuery || window.$ || null;
       this.mermaidAIChat = new MermaidAIChat($);
-      console.log("✅ MermaidAIChat initialized:", this.mermaidAIChat);
     } catch (error) {
       console.error("❌ Error initializing MermaidAIChat:", error);
       this.mermaidAIChat = null;
@@ -63,24 +55,16 @@ class KToolContent {
 
     // Initialize Text Edit AI
     try {
-      console.log("✏️ Initializing TextEditAI...");
       this.textEditAI = new TextEditAI();
-      console.log("✅ TextEditAI initialized:", this.textEditAI);
     } catch (error) {
       console.error("❌ Error initializing TextEditAI:", error);
       this.textEditAI = null;
     }
-
-    // Make available globally for debugging
-    window.ktoolContent = this;
-
-    console.log("✅ K-Tool Content Script ready");
   }
 
   async loadSettings() {
     try {
       this.settings = await StorageManager.getSettings();
-      console.log("⚙️ Settings loaded:", this.settings);
     } catch (error) {
       console.error("❌ Error loading settings:", error);
     }
@@ -148,17 +132,17 @@ class KToolContent {
             <button class="ktool-tab" data-tab="preview">👁️ Preview</button>
             <button class="ktool-tab" data-tab="settings">⚙️ Settings</button>
           </div>
-          
+
           <!-- Generate Tab -->
           <div class="ktool-tab-content active" data-tab="generate">
             ${this.createGenerateTab()}
           </div>
-          
+
           <!-- Preview Tab -->
           <div class="ktool-tab-content" data-tab="preview" id="previewTab">
             ${this.createPreviewTab()}
           </div>
-          
+
           <!-- Settings Tab -->
           <div class="ktool-tab-content" data-tab="settings">
             ${this.createSettingsTab()}
@@ -203,7 +187,7 @@ class KToolContent {
           </button>
         </div>
       </div>
-      
+
       <!-- Progress Section -->
       <div class="ktool-progress" id="progressSection" style="display: none;">
         <h3 style="margin: 0 0 16px 0; font-size: 16px;">Document Generation Progress:</h3>
@@ -277,7 +261,7 @@ class KToolContent {
     this.addSettingsButtonListener();
 
     // Listen for settings changes from background
-    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    chrome.runtime.onMessage.addListener((request) => {
       if (request.action === "settingsChanged") {
         this.settings = request.settings;
         this.updateBubbleState();
@@ -376,19 +360,9 @@ class KToolContent {
   }
 
   async handleGenerate() {
-    console.log("🔄 Starting new document generation...");
-
     // Clear all localStorage to avoid conflicts with previous data
     try {
-      const result = await this.storageManager.clearAllKToolData();
-      console.log(
-        "🧹 Cleared all previous localStorage data:",
-        result.clearedKeys
-      );
-
-      if (result.failedKeys.length > 0) {
-        console.warn("⚠️ Some keys failed to clear:", result.failedKeys);
-      }
+      await this.storageManager.clearAllKToolData();
     } catch (clearError) {
       console.warn(
         "⚠️ Failed to clear previous localStorage data:",
@@ -429,8 +403,6 @@ class KToolContent {
           "❌ Invalid URL! Please check the Confluence page URL."
         );
       }
-
-      console.log("🔍 Fetching content for pageId:", pageId);
       const baDocument = await ConfluenceApi.fetchPageContent(pageId);
       if (!baDocument) {
         throw new Error("❌ Cannot fetch BA document content!");
@@ -440,8 +412,6 @@ class KToolContent {
       const images = await ConfluenceApi.extractImagesFromHtml(
         baDocument.content
       );
-      console.log("🖼️ Extracted images (all base64):", images);
-
       this.updateProgress(0, "completed");
       this.updateProgress(1, "active");
 
@@ -449,8 +419,6 @@ class KToolContent {
       if (!this.settings.urlTemplate) {
         throw new Error("⚠️ Please configure document template in settings!");
       }
-
-      console.log("🔄 Cloning template from:", this.settings.urlTemplate);
       const clonedTemplate = await ConfluenceApi.cloneTemplateForGeneration(
         this.settings.urlTemplate
       );
@@ -460,8 +428,6 @@ class KToolContent {
           "❌ Cannot clone template! Please check template URL in Settings."
         );
       }
-
-      console.log("✅ Template cloned successfully:", clonedTemplate.title);
       this.updateProgress(1, "completed");
       this.updateProgress(2, "active");
 
@@ -469,8 +435,6 @@ class KToolContent {
       const placeholders = ConfluenceApi.extractPlaceholders(
         clonedTemplate.originalStorageFormat
       );
-      console.log("🔍 Found placeholders <<>>:", placeholders);
-
       if (placeholders.length === 0) {
         throw new Error(
           "⚠️ No placeholders found in format <<Name>>. Please check template!"
@@ -487,10 +451,6 @@ class KToolContent {
           this.settings.instructionUrl
         );
         if (instructionPageId) {
-          console.log(
-            "🔍 Fetching instruction content for pageId:",
-            instructionPageId
-          );
           const instructionDoc = await ConfluenceApi.fetchPageContent(
             instructionPageId
           );
@@ -548,7 +508,7 @@ class KToolContent {
   // These methods are now handled by ConfluenceApi class
   // Keeping them for backward compatibility if needed
 
-  async pollGenerationResult(jobId, payload) {
+  async pollGenerationResult(jobId) {
     const maxAttempts = 40; // 10 minutes max (60 * 10 seconds)
     let attempts = 0;
 
@@ -570,8 +530,6 @@ class KToolContent {
         const status = statusResult.data.status;
 
         if (status === "done") {
-          console.log("✅ Generation completed!");
-
           const result = await ApiClient.getResult(jobId);
           const resultString = JSON.stringify(result, null, 2);
 
@@ -615,24 +573,17 @@ class KToolContent {
   async handleGenerationComplete(result) {
     this.updateProgress(3, "completed");
     this.updateProgress(4, "completed");
-    const content = XMLFormatter.cleanXMLMarkers(
-      result.full_storage_format ?? ""
-    );
     // Store result for preview
     this.generatedContent = result;
-    console.log("✅ Generated content:", result);
-
     // 💾 IMPORTANT: Save generated content to localStorage backup
     try {
       this.storageManager.saveToLocalStorage(result);
-      console.log("💾 Generated content saved to localStorage backup");
     } catch (error) {
       console.error("❌ Failed to save generated content to backup:", error);
     }
 
     // 🎨 IMPORTANT: Process Mermaid diagrams and save mappings for later replacement
     try {
-      console.log("🎨 Processing Mermaid diagrams in generated content...");
       await this.initializeMermaidDiagramMappings(result);
     } catch (error) {
       console.error("❌ Failed to process Mermaid diagrams:", error);
@@ -743,24 +694,11 @@ class KToolContent {
           this.generatedContent.content;
         console.warn("⚠️ No backup content found, using generated content");
       }
-
-      console.log("📄 Creating page with content:", {
-        backupContentLength: backupContent?.full_storage_format?.length || 0,
-        generatedContentLength:
-          this.generatedContent?.full_storage_format?.length || 0,
-        contentLength: content?.length || 0,
-        preview: content?.substring(0, 300) || "empty",
-        source: backupContent ? "backup" : "generated",
-      });
-
       // Replace Mermaid images with original code before sending to API
       content = await this.replaceMermaidImagesWithOriginalCode(content);
       console.warn("Content after replace:", content?.substring(0, 500));
 
       // 🔄 Convert HTML to XHTML using BeautifulSoup API before creating page
-      console.log(
-        "🔄 Converting HTML to XHTML before creating Confluence page..."
-      );
       createBtn.innerHTML = "🔄 Converting to XHTML...";
       content = this.normalizeConfluenceHtml(content);
       // Extract parent page ID from settings if available
@@ -811,46 +749,19 @@ class KToolContent {
    */
   async initializeMermaidDiagramMappings(generatedContent) {
     try {
-      console.log("🎨 Initializing Mermaid diagram mappings...");
-
       const content =
         generatedContent.full_storage_format || generatedContent.content || "";
       if (!content) {
-        console.log("ℹ️ No content to process");
         return;
       }
-
-      console.log("🔍 Content to process:", {
-        length: content.length,
-        preview: content.substring(0, 1000),
-        hasMermaidKeyword: content.includes("mermaid"),
-        hasAcMacro: content.includes('ac:name="mermaid'),
-        hasCodeBlock: content.includes("```mermaid"),
-        hasStructuredMacro: content.includes("<ac:structured-macro"),
-        mermaidOccurrences: (content.match(/mermaid/gi) || []).length,
-      });
-
       // Also log a larger sample if content is long
       if (content.length > 1000) {
         console.log("🔍 Extended content preview:", content.substring(0, 2000));
       }
-
-      console.log("✅ Using imported MermaidRenderer, extracting diagrams...");
-
       // Use imported MermaidRenderer to extract diagrams
       const { diagrams } = MermaidRenderer.extractMermaidDiagrams(content);
       console.warn("🔍 Extracted diagrams:", diagrams);
-      console.log("📊 Diagrams details:", {
-        count: diagrams?.length || 0,
-        diagrams: diagrams?.map((d) => ({
-          id: d.id,
-          type: d.type,
-          codeLength: d.code?.length || 0,
-          originalMatchLength: d.originalMatch?.length || 0,
-        })),
-      });
       if (diagrams.length === 0) {
-        console.log("ℹ️ No Mermaid diagrams found in generated content");
         // Initialize empty mappings
         this.storageManager.saveMermaidDiagramMappings(new Map());
         return;
@@ -900,15 +811,10 @@ class KToolContent {
    */
   async replaceMermaidImagesWithOriginalCode(content) {
     try {
-      console.log("🔄 Replacing Mermaid images with original code...");
-
       // Get committed diagram mappings from storage (main only, not draft)
       const diagramMappings = this.storageManager.getMermaidDiagramMappings();
 
       if (!diagramMappings || diagramMappings.size === 0) {
-        console.log(
-          "ℹ️ No committed diagram mappings found in storage, returning content as-is"
-        );
         return content;
       }
 
@@ -922,15 +828,6 @@ class KToolContent {
       // Replace each image with its original code using string replacement
       for (const [diagramId, mapping] of diagramMappings.entries()) {
         console.log(`🔄 Processing diagram ${diagramId}`);
-        console.log("📋 Mapping data:", {
-          hasOriginCode: !!mapping.originCode,
-          hasOriginalCode: !!mapping.originalCode,
-          hasContent: !!mapping.content,
-          originCodeLength: mapping.originCode?.length || 0,
-          originalCodeLength: mapping.originalCode?.length || 0,
-          contentLength: mapping.content?.length || 0,
-        });
-
         // Use originCode first, then fallback to originalCode
         const replacementCode =
           mapping.originCode || mapping.originalCode || mapping.content;
@@ -993,10 +890,8 @@ class KToolContent {
       // try {
       //   await this.storageManager.removeItem(
       //     this.storageManager.constructor.STORAGE_KEYS.MERMAID_DIAGRAM_MAPPINGS
-      //   );
-      //   console.log("🧹 Cleaned up diagram mappings from storage");
-      // } catch (cleanupError) {
-      //   console.warn("⚠️ Failed to clean up diagram mappings:", cleanupError);
+      //   );
+      // } catch (cleanupError) {
       // }
 
       return processedContent;
@@ -1008,10 +903,6 @@ class KToolContent {
   }
 
   handleEditContent(content) {
-    console.log("✏️ Opening content editor...");
-    console.log("🔍 Content to edit:", content);
-    console.log("🔍 ConfluenceEditor instance:", this.confluenceEditor);
-
     if (!this.confluenceEditor) {
       console.error("❌ ConfluenceEditor is null or undefined");
       this.showNotification("Confluence Editor not initialized!", "error");
@@ -1045,12 +936,10 @@ class KToolContent {
       });
 
       // Open the editor with current content
-      console.log("🚀 Opening ConfluenceEditor...");
       this.confluenceEditor.openEditor(content, {
         title: "Edit Generated Document",
         showMermaidTools: true,
       });
-      console.log("✅ ConfluenceEditor opened successfully");
     } catch (error) {
       console.error("❌ Error opening ConfluenceEditor:", error);
       this.showNotification(`Error opening editor: ${error.message}`, "error");
@@ -1059,7 +948,6 @@ class KToolContent {
 
   handleReset() {
     // Auto reset form without confirm
-    console.log("🔄 Auto-resetting form...");
     document.getElementById("baDocUrl").value = window.location.href;
     document.getElementById("additionalNotes").value = "";
     this.hideProgress();
@@ -1164,8 +1052,6 @@ class KToolContent {
   // Initialize Mermaid diagrams
   async initializeMermaid() {
     try {
-      console.log("🎨 Initializing Mermaid diagrams...");
-
       // Find all mermaid code blocks in the preview
       const previewDiv = document.getElementById("documentPreview");
       if (!previewDiv) return;

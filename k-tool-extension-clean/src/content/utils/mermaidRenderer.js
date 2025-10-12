@@ -15,7 +15,7 @@ export class MermaidRenderer {
     const res = await fetch(chrome.runtime.getURL("lib/mermaid.min.js"));
     const text = await res.text();
     eval(text); // UMD will attach mermaid to window
-    console.log("✅ Mermaid loaded dynamically");
+
     return window.mermaid;
   }
 
@@ -62,7 +62,6 @@ export class MermaidRenderer {
     try {
       // 🧹 Làm sạch code trước
       const cleanCode = this.cleanMermaidCode(mermaidCode);
-      console.log("🧹 Cleaned Mermaid code for rendering:", cleanCode);
 
       // 🧩 Kiểm tra hợp lệ
       if (!this.validateMermaidCode(cleanCode)) {
@@ -106,7 +105,7 @@ export class MermaidRenderer {
 
         // ✅ Gán SVG vào container thực tế
         container.innerHTML = svgCode;
-        console.log("✅ Mermaid diagram rendered successfully!");
+
       } catch (renderError) {
         console.error("❌ Mermaid render error:", renderError);
         this.showMermaidError(container, mermaidCode, renderError);
@@ -272,7 +271,6 @@ export class MermaidRenderer {
       index++;
     }
 
-    console.log("🎨 Extracted Mermaid diagrams:", diagrams);
     return { diagrams, diagramsMap };
   }
 

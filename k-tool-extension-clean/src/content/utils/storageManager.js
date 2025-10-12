@@ -311,7 +311,7 @@ export class StorageManager {
       try {
         this.saveToLocalStorage(content);
         results.localStorage = true;
-        console.log("✅ Content saved to localStorage");
+
       } catch (error) {
         console.error("❌ Failed to save to localStorage:", error);
         results.errors.push(`localStorage: ${error.message}`);
@@ -323,7 +323,7 @@ export class StorageManager {
       try {
         await this.callSaveCallback(saveCallback, content);
         results.callback = true;
-        console.log("✅ Content saved via callback");
+
       } catch (error) {
         console.error("❌ Failed to save via callback:", error);
         results.errors.push(`callback: ${error.message}`);
@@ -397,7 +397,6 @@ export class StorageManager {
    */
   createDraftFromBackup() {
     try {
-      console.log("📝 Creating draft from backup content...");
 
       // Load backup content
       const backupContent = this.loadFromLocalStorage();
@@ -490,7 +489,6 @@ export class StorageManager {
    */
   commitDraftToBackup() {
     try {
-      console.log("💾 Committing draft to backup...");
 
       // Load draft content
       const draftContent = this.loadFromDraft();
@@ -505,7 +503,6 @@ export class StorageManager {
       // Clear draft after successful commit
       this.clearDraft();
 
-      console.log("✅ Draft committed to backup successfully");
       return true;
     } catch (error) {
       console.error("❌ Failed to commit draft to backup:", error);
@@ -559,7 +556,7 @@ export class StorageManager {
         StorageManager.STORAGE_KEYS.MERMAID_DIAGRAM_MAPPINGS_DRAFT,
         JSON.stringify(draftData)
       );
-      console.log("📝 Created Mermaid diagram mappings draft");
+
       return mainMappings;
     } catch (error) {
       console.error("❌ Error creating Mermaid diagram mappings draft:", error);
@@ -580,7 +577,7 @@ export class StorageManager {
         StorageManager.STORAGE_KEYS.MERMAID_DIAGRAM_MAPPINGS_DRAFT,
         JSON.stringify(draftData)
       );
-      console.log("📝 Saved Mermaid diagram mappings to draft");
+
     } catch (error) {
       console.error(
         "❌ Error saving Mermaid diagram mappings to draft:",
@@ -595,27 +592,13 @@ export class StorageManager {
       const saved = localStorage.getItem(
         StorageManager.STORAGE_KEYS.MERMAID_DIAGRAM_MAPPINGS_DRAFT
       );
-      console.log(
-        "🔍 DEBUG: Raw draft data from localStorage:",
-        saved ? "exists" : "null"
-      );
 
       if (!saved) return null;
 
       const draftData = JSON.parse(saved);
-      console.log("🔍 DEBUG: Parsed draft data:", {
-        hasMappings: !!draftData.mappings,
-        mappingsLength: draftData.mappings?.length || 0,
-        timestamp: draftData.timestamp,
-        isDraft: draftData.isDraft,
-      });
 
       const mappings = new Map(draftData.mappings); // Convert array back to Map
-      console.log(
-        "📝 Loaded Mermaid diagram mappings from draft:",
-        mappings.size,
-        "diagrams"
-      );
+
       console.log(
         "🔍 DEBUG: Draft mappings keys:",
         Array.from(mappings.keys())
@@ -633,7 +616,6 @@ export class StorageManager {
   // Commit draft to main mermaid diagram mappings
   commitMermaidDiagramMappingsDraftToMain() {
     try {
-      console.log("🔍 DEBUG: Starting commit process...");
 
       // Check what's in draft before commit
       const draftMappings = this.loadMermaidDiagramMappingsFromDraft();
@@ -642,21 +624,8 @@ export class StorageManager {
         return false;
       }
 
-      console.log("🔍 DEBUG: Draft mappings to commit:", {
-        size: draftMappings.size,
-        keys: Array.from(draftMappings.keys()),
-        firstEntry:
-          draftMappings.size > 0
-            ? Array.from(draftMappings.entries())[0]
-            : null,
-      });
-
       // Check what's in main before clearing
       const oldMainMappings = this.getMermaidDiagramMappings();
-      console.log("🔍 DEBUG: Old main mappings before clear:", {
-        size: oldMainMappings.size,
-        keys: Array.from(oldMainMappings.keys()),
-      });
 
       // Clear old main mappings completely first
       console.log("🗑️ Clearing old main Mermaid diagram mappings...");
@@ -668,29 +637,19 @@ export class StorageManager {
       const afterClear = localStorage.getItem(
         StorageManager.STORAGE_KEYS.MERMAID_DIAGRAM_MAPPINGS
       );
-      console.log("🔍 DEBUG: Main mappings after clear:", afterClear);
 
       // Save draft mappings as new main mappings
       console.log(
         `📝 Saving ${draftMappings.size} draft mappings as main mappings...`
       );
       const saveSuccess = this.saveMermaidDiagramMappings(draftMappings);
-      console.log("🔍 DEBUG: Save result:", saveSuccess);
 
       // Verify save worked
       const newMainMappings = this.getMermaidDiagramMappings();
-      console.log("🔍 DEBUG: New main mappings after save:", {
-        size: newMainMappings.size,
-        keys: Array.from(newMainMappings.keys()),
-        firstEntry:
-          newMainMappings.size > 0
-            ? Array.from(newMainMappings.entries())[0]
-            : null,
-      });
 
       // Clear draft after successful commit
       this.clearMermaidDiagramMappingsDraft();
-      console.log("✅ Committed Mermaid diagram mappings draft to main");
+
       return true;
     } catch (error) {
       console.error(
@@ -725,11 +684,10 @@ export class StorageManager {
   getMermaidDiagramMappingsWithDraft() {
     const draftMappings = this.loadMermaidDiagramMappingsFromDraft();
     if (draftMappings) {
-      console.log("📝 Using Mermaid diagram mappings from draft");
+
       return draftMappings;
     }
 
-    console.log("💾 Using Mermaid diagram mappings from main storage");
     return this.getMermaidDiagramMappings();
   }
 
@@ -829,7 +787,7 @@ export class StorageManager {
     this.autoSaveTimer = setInterval(() => {
       try {
         saveFunction();
-        console.log("🔄 Auto-save completed");
+
       } catch (error) {
         console.error("❌ Auto-save failed:", error);
       }
@@ -987,7 +945,7 @@ export class StorageManager {
         StorageManager.STORAGE_KEYS.MERMAID_DIAGRAM_MAPPINGS
       );
       if (!stored) {
-        console.log("📊 No stored Mermaid diagram mappings found");
+
         return new Map();
       }
 
@@ -1027,7 +985,6 @@ export class StorageManager {
       }
     }
 
-    console.log("🧹 Cleared K-Tool localStorage keys:", clearedKeys);
     if (failedKeys.length > 0) {
       console.warn("⚠️ Failed to clear some keys:", failedKeys);
     }

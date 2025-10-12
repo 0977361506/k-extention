@@ -56,7 +56,6 @@ export class ContentSynchronizer {
     // 2. Sync Mermaid changes
     const finalContent = this.syncMermaidChanges(rawContent, mermaidDiagrams);
 
-    console.log("🔄 All content synchronized");
     return finalContent;
   }
 
@@ -80,7 +79,6 @@ export class ContentSynchronizer {
       updatedContent.content = rawEditor.value.trim();
     }
 
-    console.log("📝 Synced content from raw editor");
     return updatedContent;
   }
 
@@ -91,10 +89,6 @@ export class ContentSynchronizer {
    * @returns {Object} Updated content object
    */
   syncMermaidChanges(currentContent, mermaidDiagrams = []) {
-    console.log("🔄 Starting Mermaid sync...", {
-      diagramsCount: mermaidDiagrams.length,
-      hasContent: !!currentContent,
-    });
 
     if (!mermaidDiagrams || mermaidDiagrams.length === 0) {
       console.log("⚠️ No Mermaid diagrams to sync");
@@ -103,7 +97,6 @@ export class ContentSynchronizer {
 
     let content =
       currentContent.full_storage_format || currentContent.content || "";
-    console.log("📊 Processing all diagrams (no change check)...");
 
     // Process each diagram - always replace originalCode with code
     mermaidDiagrams.forEach((diagram, index) => {
@@ -161,7 +154,6 @@ export class ContentSynchronizer {
       updatedContent.content = content;
     }
 
-    console.log("✅ Mermaid sync completed - all diagrams processed");
     return updatedContent;
   }
 
@@ -180,15 +172,6 @@ export class ContentSynchronizer {
 
     const originalCode = diagram.originalCode;
     const newCode = diagram.code;
-
-    console.log("🔄 Updating diagram in content:", {
-      index,
-      diagramId: diagram.id,
-      hasOriginalCode: !!originalCode,
-      hasNewCode: !!newCode,
-      originalLength: originalCode?.length || 0,
-      newLength: newCode?.length || 0,
-    });
 
     if (!originalCode || !newCode) {
       console.log("⚠️ Missing originalCode or newCode - skipping update");
@@ -236,8 +219,6 @@ export class ContentSynchronizer {
     let updatedContent = content;
     let patternMatched = false;
 
-    console.log("🔍 Trying patterns to match and replace...");
-
     for (let i = 0; i < patterns.length; i++) {
       const { pattern, replacement } = patterns[i];
 
@@ -265,7 +246,7 @@ export class ContentSynchronizer {
       console.warn(
         `⚠️ Could not find pattern to update diagram ${diagram.id || index}`
       );
-      console.log("🔍 Debug info:");
+
       console.log(
         "Original code preview:",
         originalCode.substring(0, 100) + "..."
@@ -277,7 +258,7 @@ export class ContentSynchronizer {
       const simpleSearch = content.includes(originalCode.trim());
       console.log("Simple string search found original code:", simpleSearch);
     } else {
-      console.log("✅ Pattern matching successful, content updated");
+
     }
 
     return updatedContent;
@@ -351,7 +332,6 @@ export class ContentSynchronizer {
       throw new Error("Invalid backup data");
     }
 
-    console.log("🔄 Restored content from backup");
     return backup.content;
   }
 }
