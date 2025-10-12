@@ -43,9 +43,6 @@
         "assets/*",
         "lib/*",
         "lib/mermaid.min.js",
-        "lib/mermaid.esm.min.mjs",
-        "src/content/mermaidAI/textEditAI.css",
-        "src/content/mermaidAI/dragUtils.js",
         "src/content/richTextEditor/*"
       ],
       "matches": ["<all_urls>"]

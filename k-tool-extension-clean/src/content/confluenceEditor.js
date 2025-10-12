@@ -1831,35 +1831,6 @@ ${cleanedDiagram}
   }
 
   /**
-   * Format and clean XHTML content (remove whitespace, normalize structure)
-   */
-  normalizeHtmlString(html) {
-    if (!html || typeof html !== "string") {
-      return html;
-    }
-
-    // 1. Loại bỏ các dòng trống đầu/cuối chuỗi
-    let cleanedHtml = html.trim();
-
-    // 2. Thay thế tất cả các khoảng trắng, tab, và dòng mới liên tiếp (ví dụ: \n\t  )
-    // bên trong các thẻ HTML hoặc giữa các thẻ
-    // thành MỘT khoảng trắng duy nhất.
-    // [ \t\n\r]+ là regex bắt tất cả các loại khoảng trắng
-    cleanedHtml = cleanedHtml.replace(/[ \t\n\r]+/g, " ");
-
-    // 3. Xóa khoảng trắng ngay trước và sau các thẻ HTML
-    // (Điều này thường loại bỏ khoảng trắng giữa các thẻ block như </div> <div>)
-    cleanedHtml = cleanedHtml.replace(/> </g, "><");
-
-    // 4. (Tùy chọn) Thêm lại các dấu xuống dòng hợp lí sau các thẻ BLOCK
-    // Ví dụ: sau </div> hoặc </p> để giữ cấu trúc dễ đọc.
-    // Nếu không cần cấu trúc block, bạn có thể bỏ qua bước này.
-    // cleanedHtml = cleanedHtml.replace(/></g, '>\n<');
-
-    return cleanedHtml;
-  }
-
-  /**
    * Process Mermaid diagrams in content synchronously (convert to img tags)
    * Uses existing mappings from localStorage if available
    */

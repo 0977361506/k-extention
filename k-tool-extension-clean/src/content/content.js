@@ -6,6 +6,7 @@ import { MermaidAIChat } from "./mermaidAI/mermaidAIChat.js";
 import { TextEditAI } from "./mermaidAI/textEditAI.js";
 import { MermaidRenderer } from "./utils/mermaidRenderer.js";
 import { StorageManager } from "./utils/storageManager.js";
+import { XMLFormatter } from "./utils/xmlFormatter.js";
 
 class KToolContent {
   constructor() {
@@ -599,6 +600,14 @@ class KToolContent {
 
   updatePreviewTab(content) {
     const previewTab = document.getElementById("previewTab");
+
+    // Clean XML markers from content before displaying
+    let cleanContent =
+      content.full_storage_format || "<p>No content available</p>";
+    if (cleanContent !== "<p>No content available</p>") {
+      cleanContent = XMLFormatter.cleanXMLMarkers(cleanContent);
+    }
+
     previewTab.innerHTML = `
       <div class="ktool-form">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -614,7 +623,7 @@ class KToolContent {
         </div>
 
         <div id="documentPreview" style="border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; background: #f8f9fa; max-height: 400px; overflow-y: auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6;">
-          ${content.full_storage_format || "<p>No content available</p>"}
+          ${cleanContent}
         </div>
       </div>
     `;
@@ -890,8 +899,10 @@ class KToolContent {
       // try {
       //   await this.storageManager.removeItem(
       //     this.storageManager.constructor.STORAGE_KEYS.MERMAID_DIAGRAM_MAPPINGS
-      //   );
-      // } catch (cleanupError) {
+      //   );
+
+      // } catch (cleanupError) {
+
       // }
 
       return processedContent;
