@@ -612,7 +612,7 @@ class KToolContent {
     await poll();
   }
 
-  handleGenerationComplete(result) {
+  async handleGenerationComplete(result) {
     this.updateProgress(3, "completed");
     this.updateProgress(4, "completed");
     const content = XMLFormatter.cleanXMLMarkers(
@@ -621,6 +621,23 @@ class KToolContent {
     // Store result for preview
     this.generatedContent = result;
     console.log("✅ Generated content:", result);
+
+    // 💾 IMPORTANT: Save generated content to localStorage backup
+    try {
+      this.storageManager.saveToLocalStorage(result);
+      console.log("💾 Generated content saved to localStorage backup");
+    } catch (error) {
+      console.error("❌ Failed to save generated content to backup:", error);
+    }
+
+    // 🎨 IMPORTANT: Process Mermaid diagrams and save mappings for later replacement
+    try {
+      console.log("🎨 Processing Mermaid diagrams in generated content...");
+      await this.initializeMermaidDiagramMappings(result);
+    } catch (error) {
+      console.error("❌ Failed to process Mermaid diagrams:", error);
+    }
+
     // Switch to preview tab
     this.switchTab("preview");
     this.updatePreviewTab(result);
@@ -664,7 +681,35 @@ class KToolContent {
       this.initializeMermaid();
     }, 100);
   }
+  /**
+   * Chuẩn hóa chuỗi HTML: Sửa lỗi cú pháp bảng nghiêm ngặt (colgroup)
+   * và dọn dẹp các tag/khoảng trắng thừa.
+   * * @param {string} htmlString Chuỗi HTML cần chuẩn hóa.
+   * @returns {string} Chuỗi HTML đã được làm sạch và sửa lỗi cấu trúc bảng.
+   */
+  normalizeConfluenceHtml(htmlString) {
+    if (!htmlString || typeof htmlString !== "string") {
+      return "";
+    }
 
+    let cleanedHtml = htmlString;
+
+    // 1. Loại bỏ tất cả các thẻ <colgroup> và nội dung của nó.
+    // Bắt đầu từ <colgroup> (có hoặc không có thuộc tính) và kết thúc bằng </colgroup>.
+    // [\s\S]*? dùng để bắt mọi thứ (kể cả dòng ngắt) không tham lam.
+    cleanedHtml = cleanedHtml.replace(
+      /<colgroup[^>]*>[\s\S]*?<\/colgroup>/gi,
+      ""
+    );
+
+    // 2. Loại bỏ dạng thẻ <colgroup/> tự đóng (Self-closing)
+    cleanedHtml = cleanedHtml.replace(/<colgroup[^>]*\/>/gi, "");
+
+    // 3. Loại bỏ thẻ <col> riêng lẻ (dạng tự đóng <col/>) nếu chúng bị sót lại.
+    cleanedHtml = cleanedHtml.replace(/<col[^>]*\/>/gi, "");
+
+    return cleanedHtml.trim();
+  }
   async handleCreatePage() {
     const createBtn = document.querySelector("#createPageBtn");
     if (!createBtn) return;
@@ -689,15 +734,30 @@ class KToolContent {
         this.generatedContent.full_storage_format ||
         this.generatedContent.content;
 
+      console.log("📄 Creating page with content:", {
+        generatedContentLength:
+          this.generatedContent?.full_storage_format?.length || 0,
+        contentLength: content?.length || 0,
+        preview: content?.substring(0, 300) || "empty",
+      });
+
       // Replace Mermaid images with original code before sending to API
       content = await this.replaceMermaidImagesWithOriginalCode(content);
-      console.warn("Content after replace:", content);
+      console.warn("Content after replace:", content?.substring(0, 500));
+
+      // 🔄 Convert HTML to XHTML using BeautifulSoup API before creating page
+      console.log(
+        "🔄 Converting HTML to XHTML before creating Confluence page..."
+      );
+      createBtn.innerHTML = "🔄 Converting to XHTML...";
+      content = this.normalizeConfluenceHtml(content);
       // Extract parent page ID from settings if available
       let parentId = null;
       if (this.settings.documentUrl) {
         parentId = ConfluenceApi.extractPageId(this.settings.documentUrl);
       }
 
+      createBtn.innerHTML = "📄 Creating Confluence Page...";
       await ConfluenceApi.createPage(title, content, spaceKey, parentId);
 
       // Success state
@@ -734,6 +794,94 @@ class KToolContent {
   }
 
   /**
+   * Initialize Mermaid diagram mappings from generated content
+   * @param {Object} generatedContent - Generated content object
+   */
+  async initializeMermaidDiagramMappings(generatedContent) {
+    try {
+      console.log("🎨 Initializing Mermaid diagram mappings...");
+
+      const content =
+        generatedContent.full_storage_format || generatedContent.content || "";
+      if (!content) {
+        console.log("ℹ️ No content to process");
+        return;
+      }
+
+      console.log("🔍 Content to process:", {
+        length: content.length,
+        preview: content.substring(0, 1000),
+        hasMermaidKeyword: content.includes("mermaid"),
+        hasAcMacro: content.includes('ac:name="mermaid'),
+        hasCodeBlock: content.includes("```mermaid"),
+        hasStructuredMacro: content.includes("<ac:structured-macro"),
+        mermaidOccurrences: (content.match(/mermaid/gi) || []).length,
+      });
+
+      // Also log a larger sample if content is long
+      if (content.length > 1000) {
+        console.log("🔍 Extended content preview:", content.substring(0, 2000));
+      }
+
+      console.log("✅ Using imported MermaidRenderer, extracting diagrams...");
+
+      // Use imported MermaidRenderer to extract diagrams
+      const { diagrams } = MermaidRenderer.extractMermaidDiagrams(content);
+      console.warn("🔍 Extracted diagrams:", diagrams);
+      console.log("📊 Diagrams details:", {
+        count: diagrams?.length || 0,
+        diagrams: diagrams?.map((d) => ({
+          id: d.id,
+          type: d.type,
+          codeLength: d.code?.length || 0,
+          originalMatchLength: d.originalMatch?.length || 0,
+        })),
+      });
+      if (diagrams.length === 0) {
+        console.log("ℹ️ No Mermaid diagrams found in generated content");
+        // Initialize empty mappings
+        this.storageManager.saveMermaidDiagramMappings(new Map());
+        return;
+      }
+
+      console.log(
+        `📊 Found ${diagrams.length} Mermaid diagrams in generated content`
+      );
+
+      // Create diagram mappings Map for saveMermaidDiagramMappings
+      const diagramMappings = new Map();
+
+      for (const diagram of diagrams) {
+        diagramMappings.set(diagram.id, {
+          title: `Diagram ${diagram.id}`,
+          type: diagram.type,
+          content: diagram.code, // Just the mermaid code
+          originCode: diagram.originalMatch, // The full macro/code block for replacement
+          timestamp: Date.now(),
+        });
+
+        console.log(`📋 Created mapping for diagram ${diagram.id}:`, {
+          codeLength: diagram.code.length,
+          originalLength: diagram.originalMatch.length,
+        });
+      }
+
+      // Save mappings using existing method
+      const saveSuccess =
+        this.storageManager.saveMermaidDiagramMappings(diagramMappings);
+      if (saveSuccess) {
+        console.log(
+          `💾 Successfully saved ${diagramMappings.size} diagram mappings`
+        );
+      } else {
+        console.warn("⚠️ Failed to save diagram mappings");
+      }
+    } catch (error) {
+      console.error("❌ Error initializing Mermaid diagram mappings:", error);
+    }
+  }
+
+  /**
    * Replace Mermaid images with original code before sending to Confluence API
    * @param {string} content - Content with Mermaid images
    * @returns {Promise<string>} Content with original Mermaid macros
@@ -766,7 +914,22 @@ class KToolContent {
       // Replace each image with its original code using string replacement
       for (const [diagramId, mapping] of Object.entries(diagramMappings)) {
         console.log(`🔄 Processing diagram ${diagramId}`);
-        console.warn("originalCode:", mapping.content);
+        console.log("📋 Mapping data:", {
+          hasOriginCode: !!mapping.originCode,
+          hasOriginalCode: !!mapping.originalCode,
+          hasContent: !!mapping.content,
+          originCodeLength: mapping.originCode?.length || 0,
+          originalCodeLength: mapping.originalCode?.length || 0,
+          contentLength: mapping.content?.length || 0,
+        });
+
+        // Use originCode first, then fallback to originalCode
+        const replacementCode =
+          mapping.originCode || mapping.originalCode || mapping.content;
+        console.log(
+          "🔄 Using replacement code:",
+          replacementCode?.substring(0, 100)
+        );
 
         // Create regex patterns to find img tags with this diagram ID
         const imgPatterns = [
@@ -794,7 +957,7 @@ class KToolContent {
             // Replace all matches with original content
             processedContent = processedContent.replace(
               pattern,
-              mapping.originCode
+              replacementCode
             );
             replacementCount += matches.length;
             foundMatch = true;
@@ -847,10 +1010,22 @@ class KToolContent {
     try {
       // Set up save callback to update the generated content
       this.confluenceEditor.setSaveCallback((updatedContent) => {
-        console.log("💾 Content updated:", updatedContent);
+        console.log("💾 Save callback received content:", {
+          length: updatedContent?.full_storage_format?.length || 0,
+          preview:
+            updatedContent?.full_storage_format?.substring(0, 200) || "empty",
+          hasContent: !!updatedContent?.full_storage_format,
+        });
 
         // Update the stored generated content
         this.generatedContent = updatedContent;
+
+        console.log("💾 Updated this.generatedContent:", {
+          length: this.generatedContent?.full_storage_format?.length || 0,
+          preview:
+            this.generatedContent?.full_storage_format?.substring(0, 200) ||
+            "empty",
+        });
 
         // Refresh the preview tab with updated content
         this.updatePreviewTab(updatedContent);

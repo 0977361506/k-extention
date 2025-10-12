@@ -20,7 +20,7 @@ export class StorageManager {
   };
 
   constructor() {
-    this.STORAGE_KEY = "confluence_editor_backup";
+    this.STORAGE_KEY = StorageManager.STORAGE_KEYS.CONFLUENCE_CONTENT_BACKUP;
     this.AUTO_SAVE_INTERVAL = 30000; // 30 seconds
     this.autoSaveTimer = null;
   }

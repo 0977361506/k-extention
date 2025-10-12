@@ -21,6 +21,7 @@ export const API_URLS = {
   EDIT_MERMAID: `${rootUrl}/api/edit-mermaid`,
   EDIT_TEXT: `${rootUrl}/api/edit-text`,
   EDIT_HTML_CONTENT: `${rootUrl}/api/edit-html-content`,
+  CONVERT_HTML_TO_XHTML: `${rootUrl}/api/html-to-xhtml`,
 };
 
 export const CONFLUENCE_API_URLS = {

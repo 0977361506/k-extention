@@ -10,6 +10,7 @@ import { StorageManager } from "./utils/storageManager.js";
 import { XMLFormatter } from "./utils/xmlFormatter.js";
 // import { XHTMLEditor } from "./richTextEditor/XHTMLEditor.js"; // Temporarily disabled
 import { LiveTextEditor } from "./liveEdit/LiveTextEditor.js";
+// TipTapEditor is loaded from global scope via tiptap.js
 
 class ConfluenceEditor {
   constructor() {
@@ -25,6 +26,7 @@ class ConfluenceEditor {
     this.textEditor = null; // CodeMirror instance
     this.richTextEditor = null; // Rich Text Editor instance
     this.liveTextEditor = null; // Live Text Editor instance
+    this.tipTapEditor = null; // TipTap Rich Text Editor instance
     this.previewContainer = null;
     this.isPreviewMode = false;
     this.autoSaveTimer = null;
@@ -56,27 +58,27 @@ class ConfluenceEditor {
 
     console.log("📝 Opening Confluence Editor with content:", content);
 
-    // Auto-restore from localStorage backup if available (no confirm)
+    // 💾 ALWAYS use localStorage backup as source of truth (if available)
     const backup = this.storageManager.loadFromLocalStorage();
     if (backup && options.allowBackupRestore !== false) {
-      const backupInfo = this.storageManager.getBackupInfo();
-      const ageMinutes = Math.floor(backupInfo.age / (1000 * 60));
-
-      // Auto-restore if backup is recent (less than 30 minutes)
-      if (ageMinutes < 30) {
-        this.currentContent = backup;
-        console.log(
-          `📦 Auto-restored content from backup (${ageMinutes} minutes old)`
-        );
-      } else {
-        this.currentContent = content;
-        this.storageManager.clearLocalStorage();
-        console.log(
-          `📦 Backup too old (${ageMinutes} minutes), using original content`
-        );
-      }
+      this.currentContent = backup;
+      console.log("💾 Using localStorage backup as source of truth");
+      console.log(
+        "💾 Backup content length:",
+        backup.full_storage_format?.length || 0
+      );
     } else {
+      // No backup found - use provided content and save it as backup
       this.currentContent = content;
+      console.log(
+        "💾 No backup found, using provided content and saving as backup"
+      );
+
+      // Save provided content as initial backup
+      if (content) {
+        this.storageManager.saveToLocalStorage(content);
+        console.log("� Initial content saved to localStorage backup");
+      }
     }
 
     this.originalContent = JSON.parse(JSON.stringify(content)); // Deep copy of original
@@ -147,6 +149,10 @@ class ConfluenceEditor {
       this.editorContainer,
       "#live-edit-tab"
     );
+    const richTextTab = DOMHelpers.querySelector(
+      this.editorContainer,
+      "#rich-text-tab"
+    );
     const mermaidTab = DOMHelpers.querySelector(
       this.editorContainer,
       "#mermaid-tab"
@@ -157,6 +163,9 @@ class ConfluenceEditor {
     );
     DOMHelpers.addEventListener(liveEditTab, "click", () =>
       this.switchTab("live-edit")
+    );
+    DOMHelpers.addEventListener(richTextTab, "click", () =>
+      this.switchTab("rich-text")
     );
     DOMHelpers.addEventListener(mermaidTab, "click", () =>
       this.switchTab("mermaid")
@@ -173,7 +182,7 @@ class ConfluenceEditor {
         if (!rawEditor.classList.contains("hidden")) {
           this.updateContentPreview();
           this.isModified = true;
-          this.storageManager.startAutoSave(() => this.saveContent());
+          this.storageManager.startAutoSave(() => this.saveToLocalStorage());
         }
       });
     }
@@ -292,6 +301,9 @@ class ConfluenceEditor {
     } else if (tabName === "live-edit") {
       this.initializeLiveEditTab();
       this.initializeMermaidTab();
+    } else if (tabName === "rich-text") {
+      this.initializeRichTextTab();
+      this.initializeMermaidTab();
     } else if (tabName === "mermaid") {
       this.initializeMermaidTab();
     }
@@ -303,7 +315,7 @@ class ConfluenceEditor {
   async initializeContentTab() {
     const richTextContainer = DOMHelpers.querySelector(
       this.editorContainer,
-      "#rich-text-editor-container"
+      "#tiptap-editor-container"
     );
     const rawEditor = DOMHelpers.querySelector(
       this.editorContainer,
@@ -313,30 +325,31 @@ class ConfluenceEditor {
     console.log("🔍 Initializing content tab...");
     console.log("Rich text container found:", !!richTextContainer);
     console.log("Raw editor found:", !!rawEditor);
-    console.log("Current content exists:", !!this.currentContent);
 
-    if (richTextContainer && this.currentContent) {
+    // 💾 ALWAYS load content from localStorage backup (source of truth)
+    console.log(
+      "💾 Loading content from localStorage backup for Content tab..."
+    );
+    const backupContent = this.storageManager.loadFromLocalStorage();
+
+    if (richTextContainer && backupContent) {
       try {
+        // Update currentContent to match localStorage
+        this.currentContent = backupContent;
+
         // Get raw content and clean up ```xml markers
         let rawContent =
-          this.currentContent.full_storage_format ||
-          this.currentContent.content ||
-          "";
+          backupContent.full_storage_format || backupContent.content || "";
 
         console.log("Raw content length:", rawContent.length);
 
         // Clean XML markers and format for better readability
         rawContent = XMLFormatter.cleanXMLMarkers(rawContent);
-        rawContent = XMLFormatter.formatXHTML(rawContent);
+        // rawContent = XMLFormatter.formatXHTML(rawContent);
 
         console.log("Formatted content length:", rawContent.length);
 
-        // TODO: Initialize Rich Text Editor (temporarily disabled)
-        console.log(
-          "⚠️ Rich Text Editor temporarily disabled, using raw editor"
-        );
-
-        // Hide rich text container, show raw editor
+        // Hide TipTap container, show raw editor for content tab
         richTextContainer.style.display = "none";
         if (rawEditor) {
           rawEditor.classList.remove("hidden");
@@ -357,12 +370,12 @@ class ConfluenceEditor {
             this.currentContent.content ||
             "";
           rawContent = XMLFormatter.cleanXMLMarkers(rawContent);
-          rawContent = XMLFormatter.formatXHTML(rawContent);
+          // rawContent = XMLFormatter.formatXHTML(rawContent);
 
           rawEditor.value = rawContent;
           DOMHelpers.setContent(rawEditor, rawContent);
 
-          // Show raw editor, hide rich text container
+          // Show raw editor, hide rich text container (fallback mode)
           richTextContainer.style.display = "none";
           rawEditor.classList.remove("hidden");
 
@@ -440,6 +453,37 @@ class ConfluenceEditor {
           return content;
         }
       }
+    } else if (activeTab && activeTab.id === "rich-text-tab") {
+      console.log("🎨 Rich Text tab is active");
+
+      // Rich Text tab is active
+      if (this.tipTapEditor && this.tipTapEditor.isReady()) {
+        // Get content from TipTap editor
+        const content = this.tipTapEditor.getHTML() || "";
+        console.log("🎨 Got content from TipTap editor:", {
+          length: content.length,
+          preview: content.substring(0, 200),
+          hasContent: content.length > 0,
+        });
+        return content;
+      } else {
+        console.log("⚠️ TipTap Editor not ready, trying fallback");
+
+        // Get content from fallback textarea
+        const fallbackEditor = DOMHelpers.querySelector(
+          this.editorContainer,
+          "#rich-text-editor-fallback"
+        );
+        if (fallbackEditor) {
+          const content = fallbackEditor.value || "";
+          console.log(
+            "🎨 Got content from Rich Text fallback editor:",
+            content.length,
+            "characters"
+          );
+          return content;
+        }
+      }
     }
 
     console.log("📝 Using raw editor content");
@@ -476,6 +520,23 @@ class ConfluenceEditor {
       return;
     }
 
+    // Hide TipTap container, show raw editor for Live Edit tab
+    const richTextContainer = DOMHelpers.querySelector(
+      this.editorContainer,
+      "#tiptap-editor-container"
+    );
+    if (richTextContainer) {
+      richTextContainer.style.display = "none";
+    }
+    const rawEditor = DOMHelpers.querySelector(
+      this.editorContainer,
+      "#raw-content-editor"
+    );
+    if (rawEditor) {
+      rawEditor.classList.add("hidden");
+    }
+    console.log("✅ TipTap container hidden for Live Edit tab");
+
     try {
       // Initialize Live Text Editor with Quill.js
       console.log("🎨 Initializing Live Text Editor with Quill.js...");
@@ -486,12 +547,18 @@ class ConfluenceEditor {
       // Wait for editor to be ready
       await this.waitForLiveTextEditor();
 
-      // Set initial content from current content
-      if (this.currentContent) {
+      // 💾 ALWAYS load content from localStorage backup (source of truth)
+      console.log(
+        "💾 Loading content from localStorage backup for Live Edit tab..."
+      );
+      const backupContent = this.storageManager.loadFromLocalStorage();
+
+      if (backupContent) {
+        // Update currentContent to match localStorage
+        this.currentContent = backupContent;
+
         let content =
-          this.currentContent.full_storage_format ||
-          this.currentContent.content ||
-          "";
+          backupContent.full_storage_format || backupContent.content || "";
         // Clean and format content for editing
         content = XMLFormatter.cleanXMLMarkers(content);
 
@@ -504,6 +571,9 @@ class ConfluenceEditor {
 
         // Set content to Live Text Editor
         this.liveTextEditor.setHTML(content);
+        console.log("✅ Live Edit content loaded from localStorage backup");
+      } else {
+        console.log("🔍 No backup content found for Live Edit tab");
       }
 
       // Setup event listeners
@@ -534,6 +604,220 @@ class ConfluenceEditor {
     }
   }
 
+  // Initialize Rich Text tab
+  async initializeRichTextTab() {
+    console.log("🎨 Initializing Rich Text tab...");
+    console.log("🎨 Current content:", this.currentContent);
+
+    const richTextEditorContainer = DOMHelpers.querySelector(
+      this.editorContainer,
+      "#tiptap-editor-container"
+    );
+    if (!richTextEditorContainer) {
+      console.warn("⚠️ Rich Text editor container not found");
+      return;
+    }
+
+    console.log("🎨 Rich Text container found:", richTextEditorContainer);
+    console.log(
+      "🎨 Container innerHTML before:",
+      richTextEditorContainer.innerHTML
+    );
+
+    // Show TipTap container, hide raw editor for Rich Text tab
+    richTextEditorContainer.style.display = "block";
+    const rawEditor = DOMHelpers.querySelector(
+      this.editorContainer,
+      "#raw-content-editor"
+    );
+    if (rawEditor) {
+      rawEditor.classList.add("hidden");
+    }
+    console.log(
+      "✅ TipTap container shown, raw editor hidden for Rich Text tab"
+    );
+
+    try {
+      // Check if TipTapEditor is available in global scope
+      if (!window.TipTapEditor) {
+        throw new Error(
+          "TipTapEditor not found in global scope. Make sure tiptap.js is loaded."
+        );
+      }
+
+      // Only initialize TipTap editor if it doesn't exist or isn't ready
+      if (!this.tipTapEditor || !this.tipTapEditor.isReady()) {
+        console.log("🎨 Initializing TipTap Rich Text Editor...");
+        this.tipTapEditor = new window.TipTapEditor(richTextEditorContainer, {
+          placeholder: "Start writing your rich content...",
+        });
+
+        // Wait for editor to be ready
+        await this.waitForTipTapEditor();
+
+        console.log("✅ TipTap editor created and ready");
+        console.log(
+          "🎨 Container innerHTML after editor creation:",
+          richTextEditorContainer.innerHTML
+        );
+      } else {
+        console.log(
+          "🔍 TipTap editor already exists and is ready, reusing existing instance"
+        );
+        console.log(
+          "🎨 Container innerHTML (existing):",
+          richTextEditorContainer.innerHTML
+        );
+      }
+
+      // 💾 ALWAYS load content from localStorage backup (source of truth)
+      console.log("💾 Loading content from localStorage backup...");
+      const backupContent = this.storageManager.loadFromLocalStorage();
+
+      if (backupContent) {
+        console.log("💾 Found backup content, loading into Rich Text editor");
+        let content =
+          backupContent.full_storage_format || backupContent.content || "";
+        content = XMLFormatter.cleanXMLMarkers(content);
+
+        // Process Mermaid diagrams immediately after cleaning
+        content = await this.processMermaidInContentSync(content);
+
+        // content = XMLFormatter.formatXHTML(content);
+
+        // Always set content from localStorage backup
+        await this.tipTapEditor.setHTML(content);
+        console.log("✅ Rich Text content loaded from localStorage backup");
+
+        // Update currentContent to match localStorage
+        this.currentContent = backupContent;
+      } else {
+        console.log(
+          "🔍 Editor already has content, preserving existing content:",
+          currentEditorContent.substring(0, 100)
+        );
+      }
+
+      // Setup Rich Text event listeners
+      this.setupRichTextEventListeners();
+
+      console.log("✅ Rich Text tab initialized successfully");
+    } catch (error) {
+      console.error("❌ Failed to initialize Rich Text tab:", error);
+      this.createFallbackRichTextEditor(richTextEditorContainer);
+    }
+  }
+
+  // Wait for TipTap Editor to be ready
+  async waitForTipTapEditor() {
+    const maxWait = 5000; // 5 seconds
+    const checkInterval = 100; // 100ms
+    let waited = 0;
+
+    while (!this.tipTapEditor.isReady() && waited < maxWait) {
+      await new Promise((resolve) => setTimeout(resolve, checkInterval));
+      waited += checkInterval;
+    }
+
+    if (!this.tipTapEditor.isReady()) {
+      throw new Error("TipTap Editor failed to initialize within timeout");
+    }
+  }
+
+  // Create fallback rich text editor
+  createFallbackRichTextEditor(container) {
+    console.log("🔄 Creating fallback rich text editor...");
+
+    container.innerHTML = `
+      <div class="rich-text-fallback">
+        <div class="fallback-notice">
+          ⚠️ TipTap editor failed to load. Using fallback editor.
+        </div>
+        <textarea
+          class="rich-text-editor-fallback"
+          id="rich-text-editor-fallback"
+          placeholder="Enter your rich content here... (HTML supported)"
+        ></textarea>
+      </div>
+    `;
+
+    const textarea = container.querySelector("#rich-text-editor-fallback");
+
+    // Set initial content
+    if (this.currentContent) {
+      let content =
+        this.currentContent.full_storage_format ||
+        this.currentContent.content ||
+        "";
+      content = XMLFormatter.cleanXMLMarkers(content);
+      // content = XMLFormatter.formatXHTML(content);
+      textarea.value = content;
+    }
+
+    // Setup fallback event listeners
+    this.setupRichTextFallbackEventListeners(textarea);
+  }
+
+  // Setup Rich Text event listeners
+  setupRichTextEventListeners() {
+    if (this.tipTapEditor && this.tipTapEditor.isReady()) {
+      console.log("🔗 Setting up Rich Text event listeners...");
+
+      // Listen for content changes
+      const container = this.tipTapEditor.container;
+      container.addEventListener("tipTapTextChange", (event) => {
+        console.log("📝 Rich Text content changed");
+        this.isModified = true;
+        this.storageManager.startAutoSave(() => this.saveToLocalStorage());
+      });
+
+      // No sync/clear buttons - removed per user request
+
+      console.log("✅ Rich Text event listeners setup complete");
+    } else {
+      console.warn(
+        "⚠️ Cannot setup Rich Text event listeners - editor not ready"
+      );
+    }
+  }
+
+  // Setup Rich Text fallback event listeners
+  setupRichTextFallbackEventListeners(textarea) {
+    textarea.addEventListener("input", () => {
+      this.isModified = true;
+      this.storageManager.startAutoSave(() => this.saveToLocalStorage());
+    });
+  }
+
+  // Sync Rich Text content to Raw Editor (for Save functionality)
+  syncRichTextToRawEditor() {
+    if (this.tipTapEditor && this.tipTapEditor.isReady()) {
+      const htmlContent = this.tipTapEditor.getHTML();
+      console.log(
+        "🔄 Syncing Rich Text content to Raw Editor:",
+        htmlContent.substring(0, 200)
+      );
+
+      // Update raw editor with Rich Text content
+      const rawEditor = DOMHelpers.querySelector(
+        this.editorContainer,
+        "#raw-content-editor"
+      );
+      if (rawEditor) {
+        rawEditor.value = htmlContent;
+        console.log("✅ Raw editor updated with Rich Text content");
+      }
+
+      // Update current content
+      if (this.currentContent) {
+        this.currentContent.full_storage_format = htmlContent;
+        this.currentContent.content = htmlContent;
+      }
+
+      console.log("✅ Rich Text content synced to all tabs");
+    }
+  }
+
   // Create fallback textarea editor
   createFallbackTextEditor(container) {
     console.log("🔄 Creating fallback textarea editor...");
@@ -555,7 +839,7 @@ class ConfluenceEditor {
         this.currentContent.content ||
         "";
       content = XMLFormatter.cleanXMLMarkers(content);
-      content = XMLFormatter.formatXHTML(content);
+      // content = XMLFormatter.formatXHTML(content);
       textarea.value = content;
     }
 
@@ -576,7 +860,7 @@ class ConfluenceEditor {
         // Debounced auto-save
         const debouncedUpdate = this.debounce(() => {
           this.isModified = true;
-          this.storageManager.startAutoSave(() => this.saveContent());
+          this.storageManager.startAutoSave(() => this.saveToLocalStorage());
         }, 500);
 
         // Listen to custom events from LiveTextEditor
@@ -598,7 +882,7 @@ class ConfluenceEditor {
     // Debounced auto-save
     const debouncedUpdate = this.debounce(() => {
       this.isModified = true;
-      this.storageManager.startAutoSave(() => this.saveContent());
+      this.storageManager.startAutoSave(() => this.saveToLocalStorage());
     }, 500);
 
     // Real-time preview update
@@ -817,7 +1101,7 @@ class ConfluenceEditor {
       if (this.liveTextEditor && this.liveTextEditor.isReady()) {
         // Format content in Quill editor
         let content = this.liveTextEditor.getHTML();
-        content = XMLFormatter.formatXHTML(content);
+        // content = XMLFormatter.formatXHTML(content);
         this.liveTextEditor.setHTML(content);
       } else {
         // Format content in fallback textarea
@@ -827,7 +1111,7 @@ class ConfluenceEditor {
         );
         if (fallbackEditor) {
           let content = fallbackEditor.value;
-          content = XMLFormatter.formatXHTML(content);
+          // content = XMLFormatter.formatXHTML(content);
           fallbackEditor.value = content;
         }
       }
@@ -1226,17 +1510,9 @@ class ConfluenceEditor {
             });
           }
 
-          // Also update localStorage immediately for persistence
-          const storedDiagrams =
-            this.storageManager.getMermaidDiagramMappings();
-          storedDiagrams.set(this.currentSelectedDiagramId, {
-            title: this.currentSelectedDiagram.title,
-            type: this.currentSelectedDiagram.type,
-            content: newCode,
-            originCode: this.currentSelectedDiagram.originCode, // Keep the original match[0] unchanged
-            timestamp: Date.now(),
-          });
-          this.storageManager.saveMermaidDiagramMappings(storedDiagrams);
+          // Note: MERMAID_DIAGRAM_MAPPINGS should only be created when generating document
+          // Individual diagram edits should not affect the original mappings
+          // The mappings are used for replacing images back to original code when creating pages
 
           // Track the change for synchronization
           this.contentSynchronizer.trackDiagramChange(
@@ -1673,6 +1949,41 @@ class ConfluenceEditor {
     }
   }
 
+  // Save current content to localStorage (for auto-save)
+  saveToLocalStorage() {
+    console.log("💾 Auto-saving to localStorage...");
+
+    try {
+      // Get current content from active editor
+      const currentEditorContent = this.getCurrentEditorContent();
+
+      if (currentEditorContent) {
+        // Load existing backup or create new one
+        let backupContent =
+          this.storageManager.loadFromLocalStorage() ||
+          this.currentContent ||
+          {};
+
+        // Update backup with latest editor content
+        backupContent.full_storage_format = currentEditorContent;
+        backupContent.content = currentEditorContent;
+
+        // Save updated content to localStorage
+        this.storageManager.saveToLocalStorage(backupContent);
+
+        // Update currentContent to match localStorage
+        this.currentContent = backupContent;
+
+        console.log("✅ Content auto-saved to localStorage:", {
+          contentLength: currentEditorContent.length,
+          timestamp: new Date().toLocaleTimeString(),
+        });
+      }
+    } catch (error) {
+      console.error("❌ Failed to auto-save to localStorage:", error);
+    }
+  }
+
   async saveChanges() {
     console.log("💾 Saving changes...");
 
@@ -1728,6 +2039,17 @@ class ConfluenceEditor {
         );
         // Don't sync from raw editor when Live Edit is active
         // Content was already updated from Live Text Editor above
+      } else if (activeTab && activeTab.id === "rich-text-tab") {
+        console.log("💾 Rich Text tab active - syncing content to other tabs");
+        // Rich Text tab is active - sync content to raw editor
+        this.syncRichTextToRawEditor();
+
+        // Then sync all content sources
+        this.currentContent = this.contentSynchronizer.syncAllContent(
+          this.currentContent,
+          this.editorContainer,
+          this.mermaidDiagrams
+        );
       } else {
         console.log("💾 Raw/other tab active - syncing all content sources");
         // Sync all content sources (includes raw editor sync)
@@ -1749,6 +2071,13 @@ class ConfluenceEditor {
       }
 
       // Save using storage manager (supports both callback and localStorage)
+      console.log("💾 Saving content with localStorage backup enabled");
+      console.log("💾 Final content being saved:", {
+        length: this.currentContent.full_storage_format?.length || 0,
+        preview:
+          this.currentContent.full_storage_format?.substring(0, 200) || "empty",
+      });
+
       const saveResults = await this.storageManager.saveContent(
         this.currentContent,
         this.onSave,
@@ -1759,22 +2088,10 @@ class ConfluenceEditor {
         }
       );
 
-      // Update Mermaid diagram mappings in localStorage
-      console.log("💾 Updating Mermaid diagram mappings in localStorage...");
-      if (this.mermaidDiagramsMap && this.mermaidDiagramsMap.size > 0) {
-        const saveSuccess = this.storageManager.saveMermaidDiagramMappings(
-          this.mermaidDiagramsMap
-        );
-        if (saveSuccess) {
-          console.log("✅ Mermaid diagram mappings updated successfully");
-        } else {
-          console.warn("⚠️ Failed to update Mermaid diagram mappings");
-        }
-      } else {
-        // Clear mappings if no diagrams exist
-        this.storageManager.saveMermaidDiagramMappings(new Map());
-        console.log("🗂️ Cleared Mermaid diagram mappings (no diagrams found)");
-      }
+      console.log("💾 Save results:", saveResults);
+
+      // Note: MERMAID_DIAGRAM_MAPPINGS is only created when generating document
+      // Save operations should not affect these mappings
 
       // Reset modified state and update button
       this.isModified = false;
@@ -1924,9 +2241,18 @@ class ConfluenceEditor {
     // Stop auto-save
     this.storageManager.stopAutoSave();
 
-    // Destroy Rich Text Editor
+    // Destroy TipTap Rich Text Editor
+    if (this.tipTapEditor) {
+      console.log("🗑️ Destroying TipTap Rich Text Editor...");
+      if (this.tipTapEditor.destroy) {
+        this.tipTapEditor.destroy();
+      }
+      this.tipTapEditor = null;
+    }
+
+    // Legacy Rich Text Editor (if exists)
     if (this.richTextEditor) {
-      console.log("🗑️ Destroying Rich Text Editor...");
+      console.log("🗑️ Destroying Legacy Rich Text Editor...");
       this.richTextEditor.destroy();
       this.richTextEditor = null;
     }
@@ -1944,13 +2270,21 @@ class ConfluenceEditor {
     }
 
     this.isEditorOpen = false;
-    this.currentContent = null;
-    this.originalContent = null;
+    // DON'T clear currentContent and originalContent - keep them for next edit session
+    // this.currentContent = null;
+    // this.originalContent = null;
     this.mermaidDiagrams = [];
     this.mermaidDiagramsMap = new Map();
     this.currentSelectedDiagram = null;
     this.currentSelectedDiagramId = null;
     this.isModified = false;
+
+    console.log("🔍 Content preserved after close:", {
+      hasCurrentContent: !!this.currentContent,
+      hasOriginalContent: !!this.originalContent,
+      currentContentLength:
+        this.currentContent?.full_storage_format?.length || 0,
+    });
 
     // Reset zoom state
     this.currentZoom = 1;
@@ -2034,6 +2368,10 @@ class ConfluenceEditor {
           if (imageBase64) {
             // Create image with diagram ID for later replacement
             const imageHtml = `<img id="${diagram.id}" src="${imageBase64}" alt="Mermaid Diagram" style="max-width: 100%; height: auto;" data-mermaid-id="${diagram.id}" />`;
+            console.log(
+              `🎨 Generated image HTML for diagram ${diagram.id}:`,
+              imageHtml
+            );
             processedContent = processedContent.replace(
               diagram.originalMatch,
               imageHtml
@@ -2080,26 +2418,8 @@ class ConfluenceEditor {
         }
       }
 
-      // Save diagram mappings to localStorage for later use in handleCreatePage
-      if (Object.keys(diagramMappings).length > 0) {
-        try {
-          await this.storageManager.setItem(
-            this.storageManager.constructor.STORAGE_KEYS
-              .MERMAID_DIAGRAM_MAPPINGS,
-            diagramMappings
-          );
-          console.log(
-            `💾 Saved ${
-              Object.keys(diagramMappings).length
-            } diagram mappings to storage`
-          );
-        } catch (storageError) {
-          console.warn(
-            "⚠️ Failed to save diagram mappings to storage:",
-            storageError
-          );
-        }
-      }
+      // Note: This method only converts diagrams to images for display
+      // MERMAID_DIAGRAM_MAPPINGS should only be created when generating document
 
       console.log(
         `🎨 Processed ${diagrams.length} Mermaid diagrams in content`,

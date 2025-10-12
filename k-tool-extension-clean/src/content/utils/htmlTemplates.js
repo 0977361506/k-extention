@@ -30,6 +30,9 @@ export class HTMLTemplates {
           <button class="confluence-editor-tab" id="live-edit-tab">
             ✨ Live Edit
           </button>
+          <button class="confluence-editor-tab" id="rich-text-tab">
+            🎨 Rich Text
+          </button>
           <button class="confluence-editor-tab" id="mermaid-tab">
             📊 Edit Mermaid Code
           </button>
@@ -38,6 +41,7 @@ export class HTMLTemplates {
         <div class="confluence-editor-body">
           ${this.getContentTabTemplate()}
           ${this.getLiveEditTabTemplate()}
+          ${this.getRichTextTabTemplate()}
           ${this.getMermaidTabTemplate()}
         </div>
       </div>
@@ -101,6 +105,29 @@ export class HTMLTemplates {
             </div>
             <div class="content-editor-body">
               <div class="live-edit-editor-container" id="live-edit-editor-container"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Get rich text tab template
+   * @returns {string} Rich text tab HTML
+   */
+  static getRichTextTabTemplate() {
+    return `
+      <!-- Rich Text Tab -->
+      <div class="tab-content" id="rich-text-tab-content">
+        <div class="tiptap-layout-full">
+          <!-- Full Width TipTap Rich Text Editor -->
+          <div class="tiptap-editor-pane-full">
+            <div class="tiptap-editor-header">
+              <span>🎨 TipTap Rich Text Editor</span>
+            </div>
+            <div class="tiptap-editor-body">
+              <div class="tiptap-editor-container" id="tiptap-editor-container"></div>
             </div>
           </div>
         </div>

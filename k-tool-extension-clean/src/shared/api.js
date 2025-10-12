@@ -75,6 +75,42 @@ export class ApiClient {
       body: JSON.stringify(payload),
     });
   }
+
+  /**
+   * Convert HTML to XHTML using BeautifulSoup
+   * @param {string} htmlContent - HTML content to convert
+   * @returns {Promise<Object>} Conversion response with XHTML content
+   */
+  static async convertHtmlToXhtml(htmlContent) {
+    console.log("🔄 Converting HTML to XHTML...");
+    console.log("📄 HTML content length:", htmlContent?.length || 0);
+    console.log("🔗 API URL:", API_URLS.CONVERT_HTML_TO_XHTML);
+
+    try {
+      const result = await this.request(API_URLS.CONVERT_HTML_TO_XHTML, {
+        method: "POST",
+        body: JSON.stringify({
+          content: htmlContent,
+        }),
+      });
+
+      console.log("✅ HTML to XHTML conversion result:", result);
+      return result;
+    } catch (error) {
+      console.error("❌ HTML to XHTML conversion error:", error);
+      console.error("❌ Error details:", {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      });
+
+      // Return error in expected format
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
 }
 
 /**

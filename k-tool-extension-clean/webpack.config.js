@@ -6,6 +6,7 @@ module.exports = {
     popup: "./src/popup/popup.js",
     content: "./src/content/content.js",
     background: "./src/background/background.js",
+    tiptap: "./src/content/richTextEditor/tiptap-init.js",
   },
   output: {
     path: path.resolve(__dirname, "dist"),
