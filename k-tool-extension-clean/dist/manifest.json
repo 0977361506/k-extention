@@ -32,13 +32,8 @@
         "https://*.atlassian.net/*",
         "https://*.confluence.com/*"
       ],
-      "js": [
-        "lib/mermaid.min.js",
-        "lib/quill.min.js",
-        "tiptap.js",
-        "content.js"
-      ],
-      "css": ["lib/quill.snow.css", "content.css", "mermaidAIChat.css"],
+      "js": ["lib/mermaid.min.js", "tiptap.js", "content.js"],
+      "css": ["content.css", "mermaidAIChat.css"],
       "run_at": "document_idle"
     }
   ],

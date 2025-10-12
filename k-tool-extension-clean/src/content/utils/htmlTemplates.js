@@ -24,13 +24,7 @@ export class HTMLTemplates {
         </div>
 
         <div class="confluence-editor-tabs">
-          <button class="confluence-editor-tab active" id="content-tab">
-            📝 Edit Content
-          </button>
-          <button class="confluence-editor-tab" id="live-edit-tab">
-            ✨ Live Edit
-          </button>
-          <button class="confluence-editor-tab" id="rich-text-tab">
+          <button class="confluence-editor-tab active" id="rich-text-tab">
             🎨 Rich Text
           </button>
           <button class="confluence-editor-tab" id="mermaid-tab">
@@ -39,74 +33,8 @@ export class HTMLTemplates {
         </div>
 
         <div class="confluence-editor-body">
-          ${this.getContentTabTemplate()}
-          ${this.getLiveEditTabTemplate()}
           ${this.getRichTextTabTemplate()}
           ${this.getMermaidTabTemplate()}
-        </div>
-      </div>
-    `;
-  }
-
-  /**
-   * Get content tab template
-   * @returns {string} Content tab HTML
-   */
-  static getContentTabTemplate() {
-    return `
-      <!-- Content Tab -->
-      <div class="tab-content active" id="content-tab-content">
-        <div class="content-editor-layout">
-          <!-- Raw XHTML Editor (Left) -->
-          <div class="content-editor-pane">
-            <div class="content-editor-header">
-              <span>📝 Raw XHTML Content</span>
-              <div class="editor-header-actions" style="display: none;">
-                <button class="editor-toggle-btn" id="toggle-raw-view" title="Toggle Rich Text Editor">
-                  ✨ Rich
-                </button>
-              </div>
-            </div>
-            <div class="content-editor-body">
-              <div class="rich-text-editor-container" id="rich-text-editor-container" style="display: none;"></div>
-              <textarea class="raw-content-editor" id="raw-content-editor" placeholder="Raw XHTML content will appear here..."></textarea>
-            </div>
-          </div>
-
-          <!-- Preview Pane (Right) -->
-          <div class="content-preview-pane">
-            <div class="content-editor-header">
-              👁️ Live Preview
-            </div>
-            <div class="content-editor-body">
-              <div class="content-preview" id="content-preview">
-                <!-- Preview content will be rendered here -->
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  /**
-   * Get live edit tab template
-   * @returns {string} Live edit tab HTML
-   */
-  static getLiveEditTabTemplate() {
-    return `
-      <!-- Live Edit Tab -->
-      <div class="tab-content" id="live-edit-tab-content">
-        <div class="live-edit-layout-full">
-          <!-- Full Width Text Editor -->
-          <div class="live-edit-editor-pane-full">
-            <div class="content-editor-header">
-              <span>✨ Live Text Editor</span>
-            </div>
-            <div class="content-editor-body">
-              <div class="live-edit-editor-container" id="live-edit-editor-container"></div>
-            </div>
-          </div>
         </div>
       </div>
     `;
@@ -119,7 +47,7 @@ export class HTMLTemplates {
   static getRichTextTabTemplate() {
     return `
       <!-- Rich Text Tab -->
-      <div class="tab-content" id="rich-text-tab-content">
+      <div class="tab-content active" id="rich-text-tab-content">
         <div class="tiptap-layout-full">
           <!-- Full Width TipTap Rich Text Editor -->
           <div class="tiptap-editor-pane-full">
