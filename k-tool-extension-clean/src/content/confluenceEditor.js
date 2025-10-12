@@ -8,8 +8,6 @@ import { HTMLTemplates } from "./utils/htmlTemplates.js";
 import { MermaidRenderer } from "./utils/mermaidRenderer.js";
 import { StorageManager } from "./utils/storageManager.js";
 import { XMLFormatter } from "./utils/xmlFormatter.js";
-// import { XHTMLEditor } from "./richTextEditor/XHTMLEditor.js"; // Temporarily disabled
-
 // TipTapEditor is loaded from global scope via tiptap.js
 
 class ConfluenceEditor {
@@ -275,12 +273,6 @@ class ConfluenceEditor {
     console.log(`Switched to ${tabName} tab`);
   }
 
-  // Setup Rich Text Editor event listeners (temporarily disabled)
-  setupRichTextEditorEvents() {
-    console.log("⚠️ Rich Text Editor events disabled");
-    return;
-  }
-
   // Get current content from TipTap Rich Text editor
   getCurrentEditorContent() {
     console.log("🔍 Getting current editor content from TipTap...");
@@ -379,8 +371,6 @@ class ConfluenceEditor {
         // Process Mermaid diagrams immediately after cleaning
         content = await this.processMermaidInContentSync(content);
 
-        // content = XMLFormatter.formatXHTML(content);
-
         // Always set content from localStorage backup
         await this.tipTapEditor.setHTML(content);
         console.log("✅ Rich Text content loaded from localStorage backup");
@@ -446,7 +436,7 @@ class ConfluenceEditor {
         this.currentContent.content ||
         "";
       content = XMLFormatter.cleanXMLMarkers(content);
-      // content = XMLFormatter.formatXHTML(content);
+
       textarea.value = content;
     }
 
@@ -461,7 +451,7 @@ class ConfluenceEditor {
 
       // Listen for content changes
       const container = this.tipTapEditor.container;
-      container.addEventListener("tipTapTextChange", (event) => {
+      container.addEventListener("tipTapTextChange", () => {
         console.log("📝 Rich Text content changed");
         this.isModified = true;
         this.storageManager.startAutoSave(() => this.saveToLocalStorage());

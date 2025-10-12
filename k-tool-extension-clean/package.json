@@ -42,10 +42,6 @@
     "@tiptap/extension-underline": "^3.6.6",
     "@tiptap/pm": "^3.6.6",
     "@tiptap/starter-kit": "^3.6.6",
-    "mermaid": "^9.4.3",
-    "quill": "^2.0.3",
-    "quill-image-drop-module": "^1.0.3",
-    "quill-image-resize-module": "^3.0.0",
-    "quill-table": "^1.0.0"
+    "mermaid": "^9.4.3"
   }
 }
