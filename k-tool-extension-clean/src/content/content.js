@@ -730,15 +730,27 @@ class KToolContent {
       }
 
       const title = `K-Tool Generated Document - ${new Date().toLocaleDateString()}`;
+
+      // Use backup content from localStorage (committed changes)
+      const backupContent = this.storageManager.loadFromLocalStorage();
       let content =
-        this.generatedContent.full_storage_format ||
-        this.generatedContent.content;
+        backupContent?.full_storage_format || backupContent?.content;
+
+      // Fallback to generated content if no backup
+      if (!content) {
+        content =
+          this.generatedContent.full_storage_format ||
+          this.generatedContent.content;
+        console.warn("⚠️ No backup content found, using generated content");
+      }
 
       console.log("📄 Creating page with content:", {
+        backupContentLength: backupContent?.full_storage_format?.length || 0,
         generatedContentLength:
           this.generatedContent?.full_storage_format?.length || 0,
         contentLength: content?.length || 0,
         preview: content?.substring(0, 300) || "empty",
+        source: backupContent ? "backup" : "generated",
       });
 
       // Replace Mermaid images with original code before sending to API
@@ -890,29 +902,25 @@ class KToolContent {
     try {
       console.log("🔄 Replacing Mermaid images with original code...");
 
-      // Get diagram mappings from storage
-      const diagramMappings = await this.storageManager.getItem(
-        this.storageManager.constructor.STORAGE_KEYS.MERMAID_DIAGRAM_MAPPINGS
-      );
+      // Get committed diagram mappings from storage (main only, not draft)
+      const diagramMappings = this.storageManager.getMermaidDiagramMappings();
 
-      if (!diagramMappings || Object.keys(diagramMappings).length === 0) {
+      if (!diagramMappings || diagramMappings.size === 0) {
         console.log(
-          "ℹ️ No diagram mappings found in storage, returning content as-is"
+          "ℹ️ No committed diagram mappings found in storage, returning content as-is"
         );
         return content;
       }
 
       console.log(
-        `📊 Found ${
-          Object.keys(diagramMappings).length
-        } diagram mappings in storage`
+        `📊 Found ${diagramMappings.size} committed diagram mappings in storage`
       );
 
       let processedContent = content;
       let replacementCount = 0;
 
       // Replace each image with its original code using string replacement
-      for (const [diagramId, mapping] of Object.entries(diagramMappings)) {
+      for (const [diagramId, mapping] of diagramMappings.entries()) {
         console.log(`🔄 Processing diagram ${diagramId}`);
         console.log("📋 Mapping data:", {
           hasOriginCode: !!mapping.originCode,
@@ -926,10 +934,13 @@ class KToolContent {
         // Use originCode first, then fallback to originalCode
         const replacementCode =
           mapping.originCode || mapping.originalCode || mapping.content;
-        console.log(
-          "🔄 Using replacement code:",
-          replacementCode?.substring(0, 100)
-        );
+        console.log(`🔄 Processing diagram ${diagramId}:`, {
+          hasOriginCode: !!mapping.originCode,
+          hasOriginalCode: !!mapping.originalCode,
+          hasContent: !!mapping.content,
+          usingOriginCode: !!mapping.originCode,
+          replacementCodePreview: replacementCode?.substring(0, 100) + "...",
+        });
 
         // Create regex patterns to find img tags with this diagram ID
         const imgPatterns = [

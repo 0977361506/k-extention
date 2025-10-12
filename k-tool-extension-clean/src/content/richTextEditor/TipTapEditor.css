@@ -1,12 +1,60 @@
-/* TipTap Rich Text Editor - No Custom Styles */
+/* TipTap Rich Text Editor - Full Width Layout */
+
+/* Container and Editor Full Width */
+.tiptap-editor-container {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.tiptap-editor-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.tiptap-editor-content {
+  flex: 1;
+  overflow-y: auto;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.tiptap-toolbar {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+}
 
 .tiptap-editor-prose {
+  padding: 10px !important;
   outline: none;
   min-height: 200px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
   line-height: 1.6;
   color: #374151;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 0 0 6px 6px;
+  background: white;
 }
 
 /* Typography */
@@ -198,6 +246,53 @@
 /* Selection */
 .tiptap-editor-prose ::selection {
   background: #dbeafe;
+}
+
+/* Toolbar Button Styles */
+.tiptap-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 8px;
+  min-width: 32px;
+  height: 32px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.tiptap-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+  color: #111827;
+}
+
+.tiptap-btn:active,
+.tiptap-btn.is-active {
+  background: #3b82f6;
+  border-color: #2563eb;
+  color: white;
+}
+
+.tiptap-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f9fafb;
+  color: #9ca3af;
+}
+
+/* Toolbar Separators */
+.tiptap-toolbar-separator {
+  width: 1px;
+  height: 24px;
+  background: #e5e7eb;
+  margin: 0 4px;
 }
 
 /* Responsive */

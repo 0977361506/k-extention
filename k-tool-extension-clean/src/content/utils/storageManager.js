@@ -13,7 +13,9 @@ export class StorageManager {
   // Storage keys constants
   static STORAGE_KEYS = {
     CONFLUENCE_CONTENT_BACKUP: "confluence_content_backup",
+    CONFLUENCE_CONTENT_DRAFT: "confluence_content_draft",
     MERMAID_DIAGRAM_MAPPINGS: "mermaid_diagram_mappings",
+    MERMAID_DIAGRAM_MAPPINGS_DRAFT: "mermaid_diagram_mappings_draft",
     MERMAID_AI_FILENAME: "mermaid-ai-filename",
     MERMAID_DIAGRAM_INFO: "mermaid_diagram_info",
     CONFLUENCE_EDITOR_BACKUP: "confluence_editor_backup",
@@ -385,6 +387,350 @@ export class StorageManager {
   clearLocalStorage() {
     localStorage.removeItem(this.STORAGE_KEY);
     console.log("🗑️ Cleared localStorage backup");
+  }
+
+  // ========== DRAFT SYSTEM METHODS ==========
+
+  /**
+   * Create draft from backup content
+   * @returns {Object|null} Draft content or null
+   */
+  createDraftFromBackup() {
+    try {
+      console.log("📝 Creating draft from backup content...");
+
+      // Load backup content
+      const backupContent = this.loadFromLocalStorage();
+      if (!backupContent) {
+        console.warn("⚠️ No backup content found to create draft from");
+        return null;
+      }
+
+      // Create draft with timestamp
+      const draftData = {
+        content: JSON.parse(JSON.stringify(backupContent)), // Deep copy
+        timestamp: Date.now(),
+        version: "1.0",
+        isDraft: true,
+      };
+
+      // Save draft to localStorage
+      localStorage.setItem(
+        StorageManager.STORAGE_KEYS.CONFLUENCE_CONTENT_DRAFT,
+        JSON.stringify(draftData)
+      );
+
+      console.log("✅ Draft created from backup content:", {
+        hasContent: !!draftData.content,
+        timestamp: new Date(draftData.timestamp).toLocaleString(),
+      });
+
+      return draftData.content;
+    } catch (error) {
+      console.error("❌ Failed to create draft from backup:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Save content to draft
+   * @param {Object} content - Content to save to draft
+   */
+  saveToDraft(content) {
+    try {
+      const draftData = {
+        content: content,
+        timestamp: Date.now(),
+        version: "1.0",
+        isDraft: true,
+      };
+
+      localStorage.setItem(
+        StorageManager.STORAGE_KEYS.CONFLUENCE_CONTENT_DRAFT,
+        JSON.stringify(draftData)
+      );
+
+      console.log("💾 Content saved to draft:", {
+        hasContent: !!content,
+        timestamp: new Date(draftData.timestamp).toLocaleString(),
+      });
+    } catch (error) {
+      console.error("❌ Failed to save to draft:", error);
+    }
+  }
+
+  /**
+   * Load content from draft
+   * @returns {Object|null} Draft content or null
+   */
+  loadFromDraft() {
+    try {
+      const saved = localStorage.getItem(
+        StorageManager.STORAGE_KEYS.CONFLUENCE_CONTENT_DRAFT
+      );
+      if (!saved) return null;
+
+      const draftData = JSON.parse(saved);
+      console.log("📖 Loaded content from draft:", {
+        hasContent: !!draftData.content,
+        timestamp: new Date(draftData.timestamp).toLocaleString(),
+        isDraft: draftData.isDraft,
+      });
+
+      return draftData.content;
+    } catch (error) {
+      console.error("❌ Failed to load from draft:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Save draft to backup (commit changes)
+   * @returns {boolean} Success status
+   */
+  commitDraftToBackup() {
+    try {
+      console.log("💾 Committing draft to backup...");
+
+      // Load draft content
+      const draftContent = this.loadFromDraft();
+      if (!draftContent) {
+        console.warn("⚠️ No draft content found to commit");
+        return false;
+      }
+
+      // Save draft content as backup
+      this.saveToLocalStorage(draftContent);
+
+      // Clear draft after successful commit
+      this.clearDraft();
+
+      console.log("✅ Draft committed to backup successfully");
+      return true;
+    } catch (error) {
+      console.error("❌ Failed to commit draft to backup:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Clear draft content
+   */
+  clearDraft() {
+    try {
+      localStorage.removeItem(
+        StorageManager.STORAGE_KEYS.CONFLUENCE_CONTENT_DRAFT
+      );
+      console.log("🗑️ Draft cleared");
+    } catch (error) {
+      console.error("❌ Failed to clear draft:", error);
+    }
+  }
+
+  /**
+   * Check if draft exists
+   * @returns {boolean} True if draft exists
+   */
+  hasDraft() {
+    try {
+      const saved = localStorage.getItem(
+        StorageManager.STORAGE_KEYS.CONFLUENCE_CONTENT_DRAFT
+      );
+      return !!saved;
+    } catch (error) {
+      console.error("❌ Failed to check draft existence:", error);
+      return false;
+    }
+  }
+
+  // ===== MERMAID DIAGRAM MAPPINGS DRAFT METHODS =====
+
+  // Create draft from main mermaid diagram mappings
+  createMermaidDiagramMappingsDraft() {
+    try {
+      const mainMappings = this.getMermaidDiagramMappings();
+      const draftData = {
+        mappings: Array.from(mainMappings.entries()), // Convert Map to array for storage
+        timestamp: Date.now(),
+        version: "1.0",
+        isDraft: true,
+      };
+      localStorage.setItem(
+        StorageManager.STORAGE_KEYS.MERMAID_DIAGRAM_MAPPINGS_DRAFT,
+        JSON.stringify(draftData)
+      );
+      console.log("📝 Created Mermaid diagram mappings draft");
+      return mainMappings;
+    } catch (error) {
+      console.error("❌ Error creating Mermaid diagram mappings draft:", error);
+      return new Map();
+    }
+  }
+
+  // Save mermaid diagram mappings to draft
+  saveMermaidDiagramMappingsToDraft(mappings) {
+    try {
+      const draftData = {
+        mappings: Array.from(mappings.entries()), // Convert Map to array for storage
+        timestamp: Date.now(),
+        version: "1.0",
+        isDraft: true,
+      };
+      localStorage.setItem(
+        StorageManager.STORAGE_KEYS.MERMAID_DIAGRAM_MAPPINGS_DRAFT,
+        JSON.stringify(draftData)
+      );
+      console.log("📝 Saved Mermaid diagram mappings to draft");
+    } catch (error) {
+      console.error(
+        "❌ Error saving Mermaid diagram mappings to draft:",
+        error
+      );
+    }
+  }
+
+  // Load mermaid diagram mappings from draft
+  loadMermaidDiagramMappingsFromDraft() {
+    try {
+      const saved = localStorage.getItem(
+        StorageManager.STORAGE_KEYS.MERMAID_DIAGRAM_MAPPINGS_DRAFT
+      );
+      console.log(
+        "🔍 DEBUG: Raw draft data from localStorage:",
+        saved ? "exists" : "null"
+      );
+
+      if (!saved) return null;
+
+      const draftData = JSON.parse(saved);
+      console.log("🔍 DEBUG: Parsed draft data:", {
+        hasMappings: !!draftData.mappings,
+        mappingsLength: draftData.mappings?.length || 0,
+        timestamp: draftData.timestamp,
+        isDraft: draftData.isDraft,
+      });
+
+      const mappings = new Map(draftData.mappings); // Convert array back to Map
+      console.log(
+        "📝 Loaded Mermaid diagram mappings from draft:",
+        mappings.size,
+        "diagrams"
+      );
+      console.log(
+        "🔍 DEBUG: Draft mappings keys:",
+        Array.from(mappings.keys())
+      );
+      return mappings;
+    } catch (error) {
+      console.error(
+        "❌ Error loading Mermaid diagram mappings from draft:",
+        error
+      );
+      return null;
+    }
+  }
+
+  // Commit draft to main mermaid diagram mappings
+  commitMermaidDiagramMappingsDraftToMain() {
+    try {
+      console.log("🔍 DEBUG: Starting commit process...");
+
+      // Check what's in draft before commit
+      const draftMappings = this.loadMermaidDiagramMappingsFromDraft();
+      if (!draftMappings) {
+        console.warn("⚠️ No draft mappings to commit");
+        return false;
+      }
+
+      console.log("🔍 DEBUG: Draft mappings to commit:", {
+        size: draftMappings.size,
+        keys: Array.from(draftMappings.keys()),
+        firstEntry:
+          draftMappings.size > 0
+            ? Array.from(draftMappings.entries())[0]
+            : null,
+      });
+
+      // Check what's in main before clearing
+      const oldMainMappings = this.getMermaidDiagramMappings();
+      console.log("🔍 DEBUG: Old main mappings before clear:", {
+        size: oldMainMappings.size,
+        keys: Array.from(oldMainMappings.keys()),
+      });
+
+      // Clear old main mappings completely first
+      console.log("🗑️ Clearing old main Mermaid diagram mappings...");
+      localStorage.removeItem(
+        StorageManager.STORAGE_KEYS.MERMAID_DIAGRAM_MAPPINGS
+      );
+
+      // Verify clearing worked
+      const afterClear = localStorage.getItem(
+        StorageManager.STORAGE_KEYS.MERMAID_DIAGRAM_MAPPINGS
+      );
+      console.log("🔍 DEBUG: Main mappings after clear:", afterClear);
+
+      // Save draft mappings as new main mappings
+      console.log(
+        `📝 Saving ${draftMappings.size} draft mappings as main mappings...`
+      );
+      const saveSuccess = this.saveMermaidDiagramMappings(draftMappings);
+      console.log("🔍 DEBUG: Save result:", saveSuccess);
+
+      // Verify save worked
+      const newMainMappings = this.getMermaidDiagramMappings();
+      console.log("🔍 DEBUG: New main mappings after save:", {
+        size: newMainMappings.size,
+        keys: Array.from(newMainMappings.keys()),
+        firstEntry:
+          newMainMappings.size > 0
+            ? Array.from(newMainMappings.entries())[0]
+            : null,
+      });
+
+      // Clear draft after successful commit
+      this.clearMermaidDiagramMappingsDraft();
+      console.log("✅ Committed Mermaid diagram mappings draft to main");
+      return true;
+    } catch (error) {
+      console.error(
+        "❌ Error committing Mermaid diagram mappings draft:",
+        error
+      );
+      return false;
+    }
+  }
+
+  // Clear mermaid diagram mappings draft
+  clearMermaidDiagramMappingsDraft() {
+    try {
+      localStorage.removeItem(
+        StorageManager.STORAGE_KEYS.MERMAID_DIAGRAM_MAPPINGS_DRAFT
+      );
+      console.log("🗑️ Cleared Mermaid diagram mappings draft");
+    } catch (error) {
+      console.error("❌ Error clearing Mermaid diagram mappings draft:", error);
+    }
+  }
+
+  // Check if mermaid diagram mappings draft exists
+  hasMermaidDiagramMappingsDraft() {
+    const saved = localStorage.getItem(
+      StorageManager.STORAGE_KEYS.MERMAID_DIAGRAM_MAPPINGS_DRAFT
+    );
+    return !!saved;
+  }
+
+  // Get mermaid diagram mappings (draft first, then main)
+  getMermaidDiagramMappingsWithDraft() {
+    const draftMappings = this.loadMermaidDiagramMappingsFromDraft();
+    if (draftMappings) {
+      console.log("📝 Using Mermaid diagram mappings from draft");
+      return draftMappings;
+    }
+
+    console.log("💾 Using Mermaid diagram mappings from main storage");
+    return this.getMermaidDiagramMappings();
   }
 
   /**

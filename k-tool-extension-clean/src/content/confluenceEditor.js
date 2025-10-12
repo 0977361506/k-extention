@@ -17,7 +17,6 @@ class ConfluenceEditor {
     this.originalContent = null;
     this.onSave = null;
     this.mermaidDiagrams = [];
-    this.mermaidDiagramsMap = new Map();
     this.currentSelectedDiagram = null;
     this.currentSelectedDiagramId = null;
     this.editorContainer = null;
@@ -56,31 +55,73 @@ class ConfluenceEditor {
 
     console.log("📝 Opening Confluence Editor with content:", content);
 
-    // 💾 ALWAYS use localStorage backup as source of truth (if available)
-    const backup = this.storageManager.loadFromLocalStorage();
-    if (backup && options.allowBackupRestore !== false) {
-      this.currentContent = backup;
-      console.log("💾 Using localStorage backup as source of truth");
+    // � Check if draft exists first (priority over backup)
+    const draft = this.storageManager.loadFromDraft();
+    if (draft && options.allowBackupRestore !== false) {
+      this.currentContent = draft;
+      console.log("📝 Using existing draft as source of truth");
       console.log(
-        "💾 Backup content length:",
-        backup.full_storage_format?.length || 0
+        "📝 Draft content length:",
+        draft.full_storage_format?.length || 0
       );
     } else {
-      // No backup found - use provided content and save it as backup
-      this.currentContent = content;
-      console.log(
-        "💾 No backup found, using provided content and saving as backup"
-      );
+      // No draft - use localStorage backup as source of truth (if available)
+      const backup = this.storageManager.loadFromLocalStorage();
+      if (backup && options.allowBackupRestore !== false) {
+        this.currentContent = backup;
+        console.log("💾 Using localStorage backup as source of truth");
+        console.log(
+          "💾 Backup content length:",
+          backup.full_storage_format?.length || 0
+        );
+      } else {
+        // No backup found - use provided content and save it as backup
+        this.currentContent = content;
+        console.log(
+          "💾 No backup found, using provided content and saving as backup"
+        );
 
-      // Save provided content as initial backup
-      if (content) {
-        this.storageManager.saveToLocalStorage(content);
-        console.log("� Initial content saved to localStorage backup");
+        // Save provided content as initial backup
+        if (content) {
+          this.storageManager.saveToLocalStorage(content);
+          console.log("� Initial content saved to localStorage backup");
+        }
       }
     }
 
     this.originalContent = JSON.parse(JSON.stringify(content)); // Deep copy of original
     this.isEditorOpen = true;
+
+    // 📝 Create draft from backup content for editing (if not already exists)
+    if (!this.storageManager.hasDraft()) {
+      console.log("📝 Creating draft for editing...");
+      const draftContent = this.storageManager.createDraftFromBackup();
+      if (draftContent) {
+        console.log(
+          "✅ Draft created successfully - all edits will be saved to draft"
+        );
+      } else {
+        console.warn(
+          "⚠️ Failed to create draft - using backup content directly"
+        );
+      }
+    } else {
+      console.log("📝 Draft already exists - using existing draft for editing");
+    }
+
+    // 📝 Create Mermaid diagram mappings draft (if not already exists)
+    if (!this.storageManager.hasMermaidDiagramMappingsDraft()) {
+      console.log("📝 Creating Mermaid diagram mappings draft...");
+      const draftMappings =
+        this.storageManager.createMermaidDiagramMappingsDraft();
+      if (draftMappings) {
+        console.log("✅ Mermaid diagram mappings draft created successfully");
+      } else {
+        console.warn("⚠️ Failed to create Mermaid diagram mappings draft");
+      }
+    } else {
+      console.log("📝 Mermaid diagram mappings draft already exists");
+    }
 
     // Extract Mermaid diagrams from content
     this.extractMermaidDiagrams();
@@ -358,25 +399,34 @@ class ConfluenceEditor {
         );
       }
 
-      // 💾 ALWAYS load content from localStorage backup (source of truth)
-      console.log("💾 Loading content from localStorage backup...");
-      const backupContent = this.storageManager.loadFromLocalStorage();
+      // � ALWAYS load content from draft first (if exists), then backup
+      console.log("� Loading content from draft or backup...");
+      let contentToLoad = this.storageManager.loadFromDraft();
+      let contentSource = "draft";
 
-      if (backupContent) {
-        console.log("💾 Found backup content, loading into Rich Text editor");
+      if (!contentToLoad) {
+        contentToLoad = this.storageManager.loadFromLocalStorage();
+        contentSource = "backup";
+      }
+
+      if (contentToLoad) {
+        console.log(
+          `� Found ${contentSource} content, loading into Rich Text editor`
+        );
         let content =
-          backupContent.full_storage_format || backupContent.content || "";
+          contentToLoad.full_storage_format || contentToLoad.content || "";
         content = XMLFormatter.cleanXMLMarkers(content);
 
         // Process Mermaid diagrams immediately after cleaning
         content = await this.processMermaidInContentSync(content);
 
-        // Always set content from localStorage backup
+        // Always set content from draft/backup (force reload even if editor exists)
+        console.log("🔄 Force reloading content into TipTap editor...");
         await this.tipTapEditor.setHTML(content);
-        console.log("✅ Rich Text content loaded from localStorage backup");
+        console.log(`✅ Rich Text content loaded from ${contentSource}`);
 
-        // Update currentContent to match localStorage
-        this.currentContent = backupContent;
+        // Update currentContent to match loaded content
+        this.currentContent = contentToLoad;
       } else {
         console.log(
           "🔍 Editor already has content, preserving existing content:",
@@ -489,33 +539,22 @@ class ConfluenceEditor {
         contentChanged:
           this.currentContent.full_storage_format !== currentEditorContent,
       });
+
+      // Update currentContent and save to draft
       this.currentContent.full_storage_format = currentEditorContent;
+
+      // Save to draft to preserve changes
+      console.log("📝 Saving updated content to draft...");
+      this.storageManager.saveToDraft(this.currentContent);
     }
 
     // Always extract diagrams to ensure sync with current content
     console.log("📊 Extracting diagrams from current content...");
     this.extractMermaidDiagrams();
 
-    // Merge with stored diagrams from localStorage to ensure all diagrams are available
-    console.log("📊 Merging with stored diagrams from localStorage...");
-    const storedDiagrams = this.storageManager.getMermaidDiagramMappings();
-    if (storedDiagrams && storedDiagrams.size > 0) {
-      storedDiagrams.forEach((storedData, diagramId) => {
-        // Only add if not already in current content
-        if (!this.mermaidDiagramsMap.has(diagramId)) {
-          this.mermaidDiagramsMap.set(diagramId, storedData);
-          console.log(
-            `📊 Added stored diagram: ${storedData.title} (${storedData.type})`
-          );
-        }
-      });
-    }
-
     console.log("Diagrams available:", this.mermaidDiagrams.length);
-    console.log(
-      "DiagramsMap size (after merge):",
-      this.mermaidDiagramsMap.size
-    );
+
+    // Populate selector directly from localStorage
     this.populateMermaidSelector();
   }
 
@@ -698,8 +737,6 @@ class ConfluenceEditor {
     }
 
     console.log("🔄 Populating Mermaid selector...");
-    console.log(`📊 DiagramsMap size: ${this.mermaidDiagramsMap?.size || 0}`);
-    console.log(`📊 Current options count: ${selector.options.length}`);
 
     // Clear ALL existing options completely
     selector.innerHTML = "";
@@ -710,42 +747,26 @@ class ConfluenceEditor {
     defaultOption.textContent = "📊 Select diagram to edit...";
     selector.appendChild(defaultOption);
 
-    console.log(`📊 After clear, options count: ${selector.options.length}`);
-
-    // Try to get diagrams from current content first, then fallback to localStorage
-    let diagramsToUse = this.mermaidDiagramsMap;
-
-    // If no diagrams in current content, try to load from localStorage
-    if (!diagramsToUse || diagramsToUse.size === 0) {
-      console.log("📊 No diagrams in current content, trying localStorage...");
-      const storedDiagrams = this.storageManager.getMermaidDiagramMappings();
-      if (storedDiagrams && storedDiagrams.size > 0) {
-        diagramsToUse = storedDiagrams;
-        console.log(
-          `📊 Using ${storedDiagrams.size} diagrams from localStorage`
-        );
-      }
-    }
+    // Get diagrams from draft first, then main MERMAID_DIAGRAM_MAPPINGS
+    const mermaidMappings =
+      this.storageManager.getMermaidDiagramMappingsWithDraft();
+    console.log(
+      `📊 Found ${
+        mermaidMappings?.size || 0
+      } diagrams in Mermaid diagram mappings (draft or main)`
+    );
 
     // Only add diagrams that actually exist
-    if (diagramsToUse && diagramsToUse.size > 0) {
+    if (mermaidMappings && mermaidMappings.size > 0) {
       let addedCount = 0;
 
-      // Create a Set to track added diagram IDs to prevent duplicates
-      const addedDiagrams = new Set();
-
-      diagramsToUse.forEach((diagramData, diagramId) => {
-        // Only add if not already added and has valid content
-        if (
-          !addedDiagrams.has(diagramId) &&
-          diagramData.content &&
-          diagramData.content.trim()
-        ) {
+      mermaidMappings.forEach((diagramData, diagramId) => {
+        // Only add if has valid content
+        if (diagramData.content && diagramData.content.trim()) {
           const option = document.createElement("option");
           option.value = diagramId;
           option.textContent = `${diagramData.title} (${diagramData.type})`;
           selector.appendChild(option);
-          addedDiagrams.add(diagramId);
           addedCount++;
           console.log(
             `📊 Added option ${addedCount}: ${diagramData.title} (${diagramData.type})`
@@ -754,10 +775,10 @@ class ConfluenceEditor {
       });
 
       console.log(
-        `✅ Added ${addedCount} unique diagrams to selector (total options: ${selector.options.length})`
+        `✅ Added ${addedCount} diagrams to selector (total options: ${selector.options.length})`
       );
     } else {
-      console.warn("⚠️ No Mermaid diagrams found to populate selector");
+      console.warn("⚠️ No Mermaid diagrams found in MERMAID_DIAGRAM_MAPPINGS");
     }
 
     // Remove existing event listener to prevent duplicates
@@ -774,54 +795,45 @@ class ConfluenceEditor {
     selector.addEventListener("change", this.handleMermaidSelectorChange);
 
     console.log(
-      `✅ Populated ${this.mermaidDiagramsMap?.size || 0} diagrams in selector`
+      `✅ Populated ${mermaidMappings?.size || 0} diagrams in selector`
     );
   }
 
   // Select mermaid diagram
   selectMermaidDiagram(diagramId) {
+    console.log(`🎯 selectMermaidDiagram called with ID: ${diagramId}`);
+
     if (!diagramId) {
+      console.log("🔄 No diagram ID provided, clearing editor");
       this.clearMermaidEditor();
       return;
     }
 
-    // Get diagram from current Map first
-    let diagramData = this.mermaidDiagramsMap.get(diagramId);
-    let diagram = this.mermaidDiagrams.find((d) => d.id === diagramId);
+    // Get diagram from draft first, then main MERMAID_DIAGRAM_MAPPINGS
+    console.log(
+      `📊 Loading diagram ${diagramId} from Mermaid diagram mappings...`
+    );
+    const mermaidMappings =
+      this.storageManager.getMermaidDiagramMappingsWithDraft();
+    const diagramData = mermaidMappings?.get(diagramId);
 
-    // If found in current content, ensure originCode is set
-    if (diagramData && diagram) {
-      // Ensure diagram has originCode (use originalCode from extraction or current code)
-      if (!diagram.originCode) {
-        diagram.originCode = diagram.originalCode || diagram.code;
-      }
-    }
-
-    // If not found in current content, try localStorage
     if (!diagramData) {
-      console.log(
-        `📊 Diagram ${diagramId} not found in current content, checking localStorage...`
+      console.error(
+        `❌ Diagram not found in Mermaid diagram mappings: ${diagramId}`
       );
-      const storedDiagrams = this.storageManager.getMermaidDiagramMappings();
-      diagramData = storedDiagrams.get(diagramId);
-
-      if (diagramData) {
-        console.log(`📊 Found diagram ${diagramId} in localStorage`);
-        // Create a temporary diagram object for editing
-        diagram = {
-          id: diagramId,
-          title: diagramData.title,
-          type: diagramData.type,
-          code: diagramData.content,
-          originCode: diagramData.originCode, // Use the stored originCode (match[0])
-        };
-      } else {
-        console.error(
-          `❌ Diagram not found in current content or localStorage: ${diagramId}`
-        );
-        return;
-      }
+      return;
     }
+
+    console.log(`📊 Found diagram ${diagramId} in Mermaid diagram mappings`);
+
+    // Create diagram object for editing
+    const diagram = {
+      id: diagramId,
+      title: diagramData.title,
+      type: diagramData.type,
+      code: diagramData.content,
+      originCode: diagramData.originCode, // Use the stored originCode (match[0])
+    };
 
     // Update code editor
     const codeEditor = this.editorContainer.querySelector(
@@ -831,6 +843,15 @@ class ConfluenceEditor {
       codeEditor.value = diagramData.content;
       this.currentSelectedDiagram = diagram;
       this.currentSelectedDiagramId = diagramId;
+
+      console.log(`✅ Diagram selected successfully:`, {
+        diagramId: this.currentSelectedDiagramId,
+        diagramTitle: diagram?.title,
+        diagramType: diagram?.type,
+        hasContent: !!diagramData.content,
+        contentLength: diagramData.content?.length || 0,
+      });
+
       this.updateMermaidPreview().catch((error) => {
         console.error("❌ Error updating Mermaid preview:", error);
       });
@@ -842,25 +863,49 @@ class ConfluenceEditor {
           const newCode = codeEditor.value;
           console.log("new code", newCode);
 
-          // Update diagram code in memory (both array and map)
+          // Update diagram code in memory
           this.currentSelectedDiagram.code = newCode;
 
-          // Update in current content map if exists
-          const currentDiagramData = this.mermaidDiagramsMap.get(
+          // Update in draft MERMAID_DIAGRAM_MAPPINGS
+          const mermaidMappings =
+            this.storageManager.getMermaidDiagramMappingsWithDraft();
+          const currentDiagramData = mermaidMappings.get(
             this.currentSelectedDiagramId
           );
+
           if (currentDiagramData) {
+            // Update existing diagram with new code AND new originCode
             currentDiagramData.content = newCode;
-            // Keep originCode unchanged (it should be the original match[0])
+            // Generate new originCode from updated content for Confluence page creation
+            currentDiagramData.originCode = `<ac:structured-macro ac:name="mermaid" ac:schema-version="1">
+  <ac:parameter ac:name="code">
+${newCode}
+  </ac:parameter>
+</ac:structured-macro>`;
+            mermaidMappings.set(
+              this.currentSelectedDiagramId,
+              currentDiagramData
+            );
+            console.log(
+              `📝 Updated diagram ${this.currentSelectedDiagramId} in draft mappings with new originCode`
+            );
           } else {
-            // If not in current content, add it to the map
-            this.mermaidDiagramsMap.set(this.currentSelectedDiagramId, {
+            // Add new diagram to draft mappings
+            mermaidMappings.set(this.currentSelectedDiagramId, {
               title: this.currentSelectedDiagram.title,
               type: this.currentSelectedDiagram.type,
               content: newCode,
-              originCode: this.currentSelectedDiagram.originCode, // Use the original match[0]
+              originCode: this.currentSelectedDiagram.originCode,
             });
+            console.log(
+              `📝 Added new diagram ${this.currentSelectedDiagramId} to draft mappings`
+            );
           }
+
+          // Save back to draft localStorage
+          this.storageManager.saveMermaidDiagramMappingsToDraft(
+            mermaidMappings
+          );
 
           // Note: MERMAID_DIAGRAM_MAPPINGS should only be created when generating document
           // Individual diagram edits should not affect the original mappings
@@ -879,8 +924,15 @@ class ConfluenceEditor {
           this.isModified = true;
           this.updateSaveButtonState();
 
+          // Sync with draft content
+          console.log("🔄 DEBUG: About to sync diagram with draft content...");
+          this.syncDiagramWithDraftContent(
+            this.currentSelectedDiagramId,
+            newCode
+          );
+
           console.log(
-            `📝 Updated diagram ${this.currentSelectedDiagramId} in memory and localStorage`
+            `📝 Updated diagram ${this.currentSelectedDiagramId} in draft mappings and synced with draft content`
           );
         }
       };
@@ -1010,7 +1062,64 @@ class ConfluenceEditor {
     if (!prompt) return;
 
     // Check if a diagram is selected and validate it
+    const mermaidSelector = this.editorContainer.querySelector(
+      "#mermaid-diagram-selector"
+    );
+    const codeEditor = this.editorContainer.querySelector(
+      "#mermaid-code-editor"
+    );
+    const selectedDiagramId = mermaidSelector?.value;
+    const currentCode = codeEditor?.value?.trim();
+
+    const mermaidMappings = this.storageManager.getMermaidDiagramMappings();
+
+    console.log("🔍 AI Prompt Debug:", {
+      hasCurrentSelectedDiagram: !!this.currentSelectedDiagram,
+      currentSelectedDiagramId: this.currentSelectedDiagramId,
+      selectedDiagramIdFromUI: selectedDiagramId,
+      hasCodeInEditor: !!currentCode,
+      codeLength: currentCode?.length || 0,
+      mermaidMappingsSize: mermaidMappings?.size || 0,
+    });
+
+    // Try to get diagram from UI if currentSelectedDiagram is not set
+    if (
+      (!this.currentSelectedDiagram || !this.currentSelectedDiagramId) &&
+      selectedDiagramId &&
+      currentCode
+    ) {
+      console.log("🔄 Attempting to recover diagram selection from UI...");
+
+      // Try to find diagram in MERMAID_DIAGRAM_MAPPINGS
+      console.log("🔄 Checking MERMAID_DIAGRAM_MAPPINGS for diagram...");
+      const diagramData = mermaidMappings?.get(selectedDiagramId);
+
+      if (diagramData) {
+        console.log("✅ Found diagram data, recovering selection...");
+        this.currentSelectedDiagramId = selectedDiagramId;
+        this.currentSelectedDiagram = {
+          id: selectedDiagramId,
+          title: diagramData.title,
+          type: diagramData.type,
+          code: currentCode,
+          originCode: diagramData.originCode,
+        };
+      } else if (selectedDiagramId && currentCode) {
+        // Last resort: create temporary diagram from UI state
+        console.log("🔄 Creating temporary diagram from UI state...");
+        this.currentSelectedDiagramId = selectedDiagramId;
+        this.currentSelectedDiagram = {
+          id: selectedDiagramId,
+          title: `Diagram ${selectedDiagramId}`,
+          type: "unknown",
+          code: currentCode,
+          originCode: currentCode,
+        };
+      }
+    }
+
     if (!this.currentSelectedDiagram || !this.currentSelectedDiagramId) {
+      console.warn("❌ No diagram selected for AI editing");
       this.addAIMessage(
         "ai",
         "⚠️ Please select a Mermaid diagram first to edit it."
@@ -1018,23 +1127,17 @@ class ConfluenceEditor {
       return;
     }
 
-    // Double-check the selected diagram exists in the map
-    const diagramInMap = this.mermaidDiagramsMap.get(
+    // Double-check the selected diagram exists in MERMAID_DIAGRAM_MAPPINGS
+    const diagramInMappings = mermaidMappings?.get(
       this.currentSelectedDiagramId
     );
-    if (!diagramInMap) {
+    if (!diagramInMappings) {
       this.addAIMessage(
         "ai",
         "❌ Selected diagram not found. Please select a valid diagram."
       );
       return;
     }
-
-    console.log(`🎯 AI editing diagram: ${this.currentSelectedDiagramId}`, {
-      title: diagramInMap.title,
-      type: diagramInMap.type,
-      currentCode: this.currentSelectedDiagram.code?.substring(0, 50) + "...",
-    });
 
     // Add user message
     this.addAIMessage("user", prompt);
@@ -1081,10 +1184,12 @@ class ConfluenceEditor {
 
         if (cleanedDiagram && cleanedDiagram.trim()) {
           // Validate we're still editing the same diagram
-          const currentDiagramInMap = this.mermaidDiagramsMap.get(
+          const mermaidMappings =
+            this.storageManager.getMermaidDiagramMappingsWithDraft();
+          const currentDiagramInMappings = mermaidMappings.get(
             this.currentSelectedDiagramId
           );
-          if (!currentDiagramInMap) {
+          if (!currentDiagramInMappings) {
             throw new Error("Selected diagram no longer exists");
           }
 
@@ -1093,9 +1198,27 @@ class ConfluenceEditor {
             newCode: cleanedDiagram.substring(0, 30) + "...",
           });
 
-          // Update ONLY the selected diagram
+          // Update ONLY the selected diagram with new code AND new originCode
           this.currentSelectedDiagram.code = cleanedDiagram;
-          currentDiagramInMap.content = cleanedDiagram;
+          currentDiagramInMappings.content = cleanedDiagram;
+          // Generate new originCode from AI-updated content for Confluence page creation
+          currentDiagramInMappings.originCode = `<ac:structured-macro ac:name="mermaid" ac:schema-version="1">
+  <ac:parameter ac:name="code">
+${cleanedDiagram}
+  </ac:parameter>
+</ac:structured-macro>`;
+
+          // Save back to draft MERMAID_DIAGRAM_MAPPINGS
+          mermaidMappings.set(
+            this.currentSelectedDiagramId,
+            currentDiagramInMappings
+          );
+          this.storageManager.saveMermaidDiagramMappingsToDraft(
+            mermaidMappings
+          );
+          console.log(
+            `✅ AI updated diagram saved to draft mappings with new originCode`
+          );
 
           // Update the code editor to reflect the change
           const codeEditor = this.editorContainer.querySelector(
@@ -1111,12 +1234,16 @@ class ConfluenceEditor {
             console.error("❌ Error updating Mermaid preview:", error);
           });
 
-          // Mark content as modified for synchronization
-          console.log(
-            `🔄 Diagram ${this.currentSelectedDiagramId} updated by AI`
+          // Sync updated diagram with draft content
+          await this.syncDiagramWithDraftContent(
+            this.currentSelectedDiagramId,
+            cleanedDiagram
           );
 
-          // Update the content will be handled by syncAllContent when saving
+          // Mark content as modified for synchronization
+          console.log(
+            `🔄 Diagram ${this.currentSelectedDiagramId} updated by AI and synced with backup content`
+          );
 
           // Remove loading message and add success message
           this.removeLastAIMessage();
@@ -1256,6 +1383,196 @@ class ConfluenceEditor {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }
 
+  // Sync updated diagram with draft content (for real-time editing)
+  async syncDiagramWithDraftContent(diagramId, newCode) {
+    try {
+      console.log(`🔄 Syncing diagram ${diagramId} with draft content...`);
+
+      // Get diagram data from draft MERMAID_DIAGRAM_MAPPINGS
+      const mermaidMappings =
+        this.storageManager.getMermaidDiagramMappingsWithDraft();
+      const diagramData = mermaidMappings.get(diagramId);
+
+      if (!diagramData) {
+        console.error(`❌ Diagram ${diagramId} not found in draft mappings`);
+        return;
+      }
+
+      // Generate new base64 image from updated code
+      console.log(`🖼️ Generating new image for diagram ${diagramId}...`);
+      const imageBase64 = await this.generateMermaidImage(newCode);
+
+      if (!imageBase64) {
+        console.error(`❌ Failed to generate image for diagram ${diagramId}`);
+        return;
+      }
+
+      // Get current draft content (or backup if no draft)
+      let currentContent = this.storageManager.loadFromDraft();
+      if (!currentContent) {
+        console.log("📝 No draft found, using backup content");
+        currentContent = this.storageManager.loadFromLocalStorage();
+      }
+
+      if (!currentContent || !currentContent.full_storage_format) {
+        console.error(`❌ No content found to sync with`);
+        return;
+      }
+
+      // Replace old image with new image in content
+      let updatedContent = currentContent.full_storage_format;
+
+      // Find and replace the image using diagram ID (simple approach)
+      const oldImageRegex = new RegExp(`<img[^>]*id="${diagramId}"[^>]*>`, "g");
+
+      const newImageTag = `<img id="${diagramId}" src="${imageBase64}" alt="Mermaid Diagram" style="max-width: 100%; height: auto;" data-mermaid-id="${diagramId}" />`;
+
+      console.log(
+        `🎨 Generated new image HTML for diagram ${diagramId}:`,
+        newImageTag
+      );
+
+      updatedContent = updatedContent.replace(oldImageRegex, newImageTag);
+
+      console.log(
+        `✅ Replaced image for diagram ${diagramId} in draft content`
+      );
+
+      // Update content and save to draft
+      currentContent.full_storage_format = updatedContent;
+      this.storageManager.saveToDraft(currentContent);
+
+      // Also update currentContent if it exists
+      if (this.currentContent) {
+        this.currentContent.full_storage_format = updatedContent;
+      }
+
+      console.log(
+        `✅ Successfully synced diagram ${diagramId} with draft content`
+      );
+
+      // Refresh Rich Text tab if it's currently active
+      this.refreshRichTextTabIfActive();
+    } catch (error) {
+      console.error(
+        `❌ Error syncing diagram ${diagramId} with draft content:`,
+        error
+      );
+    }
+  }
+
+  // Refresh Rich Text tab if it's currently active
+  async refreshRichTextTabIfActive() {
+    try {
+      // Check if Rich Text tab is currently active
+      const richTextTab = this.editorContainer.querySelector("#rich-text-tab");
+      const richTextContent = this.editorContainer.querySelector(
+        "#rich-text-tab-content"
+      );
+
+      if (
+        richTextTab &&
+        richTextContent &&
+        richTextTab.classList.contains("active") &&
+        richTextContent.classList.contains("active")
+      ) {
+        console.log(
+          "🔄 Refreshing Rich Text tab with updated draft content..."
+        );
+
+        // Load latest draft content
+        const draftContent = this.storageManager.loadFromDraft();
+        if (draftContent && this.tipTapEditor && this.tipTapEditor.isReady()) {
+          let content =
+            draftContent.full_storage_format || draftContent.content || "";
+          content = XMLFormatter.cleanXMLMarkers(content);
+
+          // Process Mermaid diagrams
+          content = await this.processMermaidInContentSync(content);
+
+          // Update TipTap editor content
+          await this.tipTapEditor.setHTML(content);
+
+          console.log("✅ Rich Text tab refreshed with updated content");
+        }
+      }
+    } catch (error) {
+      console.error("❌ Error refreshing Rich Text tab:", error);
+    }
+  }
+
+  // Sync updated diagram with confluence_content_backup
+  async syncDiagramWithBackupContent(diagramId, newCode) {
+    try {
+      console.log(`🔄 Syncing diagram ${diagramId} with backup content...`);
+
+      // Get diagram data from MERMAID_DIAGRAM_MAPPINGS
+      const mermaidMappings = this.storageManager.getMermaidDiagramMappings();
+      const diagramData = mermaidMappings.get(diagramId);
+
+      if (!diagramData) {
+        console.error(`❌ Diagram ${diagramId} not found in mappings`);
+        return;
+      }
+
+      // Generate new base64 image from updated code
+      console.log(`🖼️ Generating new image for diagram ${diagramId}...`);
+      const imageBase64 = await this.generateMermaidImage(newCode);
+
+      if (!imageBase64) {
+        console.error(`❌ Failed to generate image for diagram ${diagramId}`);
+        return;
+      }
+
+      // Get current draft content (or backup if no draft)
+      let currentContent = this.storageManager.loadFromDraft();
+      if (!currentContent) {
+        console.log("📝 No draft found, using backup content");
+        currentContent = this.storageManager.loadFromLocalStorage();
+      }
+
+      if (!currentContent || !currentContent.full_storage_format) {
+        console.error(`❌ No content found to sync with`);
+        return;
+      }
+
+      // Replace old image with new image in content
+      let updatedContent = currentContent.full_storage_format;
+
+      // Find and replace the image using diagram ID (simple approach)
+      const oldImageRegex = new RegExp(`<img[^>]*id="${diagramId}"[^>]*>`, "g");
+
+      const newImageTag = `<img id="${diagramId}" src="${imageBase64}" alt="Mermaid Diagram" style="max-width: 100%; height: auto;" data-mermaid-id="${diagramId}" />`;
+
+      console.log(
+        `🎨 Generated new image HTML for diagram ${diagramId}:`,
+        newImageTag
+      );
+
+      updatedContent = updatedContent.replace(oldImageRegex, newImageTag);
+
+      console.log(`✅ Replaced image for diagram ${diagramId} in content`);
+
+      // Update content and save to draft
+      currentContent.full_storage_format = updatedContent;
+      this.storageManager.saveToDraft(currentContent);
+
+      // Also update currentContent if it exists
+      if (this.currentContent) {
+        this.currentContent.full_storage_format = updatedContent;
+      }
+
+      console.log(
+        `✅ Successfully synced diagram ${diagramId} with draft content`
+      );
+    } catch (error) {
+      console.error(
+        `❌ Error syncing diagram ${diagramId} with backup content:`,
+        error
+      );
+    }
+  }
+
   extractMermaidDiagrams() {
     console.log("🔍 Extracting Mermaid diagrams...");
 
@@ -1266,7 +1583,6 @@ class ConfluenceEditor {
         contentLength: this.currentContent?.full_storage_format?.length || 0,
       });
       this.mermaidDiagrams = [];
-      this.mermaidDiagramsMap = new Map();
       return;
     }
 
@@ -1288,7 +1604,22 @@ class ConfluenceEditor {
     });
 
     this.mermaidDiagrams = diagrams;
-    this.mermaidDiagramsMap = diagramsMap;
+
+    // Merge with existing MERMAID_DIAGRAM_MAPPINGS instead of overwriting
+    const existingMappings = this.storageManager.getMermaidDiagramMappings();
+
+    // Only add new diagrams, don't overwrite existing ones (preserve edits)
+    diagramsMap.forEach((diagramData, diagramId) => {
+      if (!existingMappings.has(diagramId)) {
+        console.log(`📊 Adding new diagram to mappings: ${diagramData.title}`);
+        existingMappings.set(diagramId, diagramData);
+      } else {
+        console.log(`📊 Preserving existing diagram: ${diagramData.title}`);
+      }
+    });
+
+    // Save merged mappings back
+    this.storageManager.saveMermaidDiagramMappings(existingMappings);
   }
 
   updateStatus(message) {
@@ -1301,38 +1632,41 @@ class ConfluenceEditor {
     }
   }
 
-  // Save current content to localStorage (for auto-save)
+  // Save current content to draft (for auto-save)
   saveToLocalStorage() {
-    console.log("💾 Auto-saving to localStorage...");
+    console.log("💾 Auto-saving to draft...");
 
     try {
       // Get current content from active editor
       const currentEditorContent = this.getCurrentEditorContent();
 
       if (currentEditorContent) {
-        // Load existing backup or create new one
-        let backupContent =
-          this.storageManager.loadFromLocalStorage() ||
-          this.currentContent ||
-          {};
+        // Load existing draft or backup content
+        let draftContent = this.storageManager.loadFromDraft();
+        if (!draftContent) {
+          draftContent =
+            this.storageManager.loadFromLocalStorage() ||
+            this.currentContent ||
+            {};
+        }
 
-        // Update backup with latest editor content
-        backupContent.full_storage_format = currentEditorContent;
-        backupContent.content = currentEditorContent;
+        // Update draft with latest editor content
+        draftContent.full_storage_format = currentEditorContent;
+        draftContent.content = currentEditorContent;
 
-        // Save updated content to localStorage
-        this.storageManager.saveToLocalStorage(backupContent);
+        // Save to draft
+        this.storageManager.saveToDraft(draftContent);
 
-        // Update currentContent to match localStorage
-        this.currentContent = backupContent;
+        // Update currentContent to match draft
+        this.currentContent = draftContent;
 
-        console.log("✅ Content auto-saved to localStorage:", {
+        console.log("✅ Content auto-saved to draft:", {
           contentLength: currentEditorContent.length,
           timestamp: new Date().toLocaleTimeString(),
         });
       }
     } catch (error) {
-      console.error("❌ Failed to auto-save to localStorage:", error);
+      console.error("❌ Failed to auto-save to draft:", error);
     }
   }
 
@@ -1340,55 +1674,34 @@ class ConfluenceEditor {
     console.log("💾 Saving changes...");
 
     try {
-      // Get current content from active editor (Rich Text or Raw)
-      const currentEditorContent = this.getCurrentEditorContent();
+      // 📝 First, ensure current editor content is saved to draft
+      console.log("📝 Ensuring current editor content is saved to draft...");
+      this.saveToLocalStorage(); // Save current editor state to draft
 
-      console.log("💾 Save process - Current editor content:", {
-        length: currentEditorContent.length,
-        hasContent: currentEditorContent.length > 0,
-        preview: currentEditorContent.substring(0, 300),
-      });
+      // 📝 Then, commit draft to backup (make changes permanent)
+      console.log("📝 Committing draft to backup...");
+      const commitSuccess = this.storageManager.commitDraftToBackup();
+      if (commitSuccess) {
+        console.log("✅ Draft committed to backup successfully");
 
-      // Update current content with editor content
-      if (this.currentContent && currentEditorContent) {
-        console.log("💾 Before update - currentContent.full_storage_format:", {
-          length: this.currentContent.full_storage_format?.length || 0,
-          preview:
-            this.currentContent.full_storage_format?.substring(0, 200) ||
-            "empty",
-        });
-
-        this.currentContent.full_storage_format = currentEditorContent;
-
-        console.log("💾 After update - currentContent.full_storage_format:", {
-          length: this.currentContent.full_storage_format?.length || 0,
-          preview:
-            this.currentContent.full_storage_format?.substring(0, 200) ||
-            "empty",
-        });
-
-        console.log(
-          "📝 Updated content from editor:",
-          currentEditorContent.length,
-          "characters"
-        );
+        // Load the committed backup as current content
+        this.currentContent = this.storageManager.loadFromLocalStorage();
+        console.log("✅ Current content updated from committed backup");
       } else {
-        console.warn("⚠️ Cannot update content:", {
-          hasCurrentContent: !!this.currentContent,
-          hasEditorContent: !!currentEditorContent,
-        });
+        console.warn("⚠️ Failed to commit draft to backup");
+        return; // Don't proceed if commit failed
       }
 
-      // Only Rich Text tab exists now - sync content from TipTap editor
-      console.log("💾 Syncing content from Rich Text editor...");
-
-      // Get current content from TipTap editor
-      const editorContent = this.getCurrentEditorContent();
-      if (editorContent) {
-        // Update current content with editor content
-        this.currentContent.full_storage_format = editorContent;
-        this.currentContent.content = editorContent;
-        console.log("✅ Content synced from TipTap editor");
+      // 📝 Commit Mermaid diagram mappings draft to main
+      console.log("📝 Committing Mermaid diagram mappings draft to main...");
+      const mappingsCommitSuccess =
+        this.storageManager.commitMermaidDiagramMappingsDraftToMain();
+      if (mappingsCommitSuccess) {
+        console.log(
+          "✅ Mermaid diagram mappings draft committed to main successfully"
+        );
+      } else {
+        console.warn("⚠️ Failed to commit Mermaid diagram mappings draft");
       }
 
       // Sync all content sources (for Mermaid diagrams)
@@ -1605,7 +1918,6 @@ class ConfluenceEditor {
     // this.currentContent = null;
     // this.originalContent = null;
     this.mermaidDiagrams = [];
-    this.mermaidDiagramsMap = new Map();
     this.currentSelectedDiagram = null;
     this.currentSelectedDiagramId = null;
     this.isModified = false;

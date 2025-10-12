@@ -3,6 +3,9 @@
  * Professional rich text editor with full table and image support
  */
 
+// Import TipTap Editor CSS styles
+import "./TipTapEditor.css";
+
 /**
  * TipTap modules are loaded via tiptap-init.js and exposed to global scope
  * This class uses the global window.TipTapModules
@@ -68,24 +71,10 @@ export class TipTapEditor {
     // Create toolbar
     const toolbar = document.createElement("div");
     toolbar.className = "tiptap-toolbar";
-    toolbar.style.cssText = `
-      padding: 12px;
-      border-bottom: 1px solid #e1e5e9;
-      background: #f8f9fa;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-    `;
 
     // Create editor container
     const editorDiv = document.createElement("div");
     editorDiv.className = "tiptap-editor-content";
-    editorDiv.style.cssText = `
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px;
-    `;
 
     wrapper.appendChild(toolbar);
     wrapper.appendChild(editorDiv);
@@ -179,6 +168,57 @@ export class TipTapEditor {
                   };
                 },
               },
+            };
+          },
+          addKeyboardShortcuts() {
+            return {
+              // Disable Delete and Backspace for images
+              Delete: ({ editor }) => {
+                const { selection } = editor.state;
+                const node = selection.$from.nodeAfter;
+                if (node && node.type.name === "image") {
+                  console.log("🚫 Image deletion disabled");
+                  return true; // Prevent deletion
+                }
+                return false;
+              },
+              Backspace: ({ editor }) => {
+                const { selection } = editor.state;
+                const node = selection.$from.nodeBefore;
+                if (node && node.type.name === "image") {
+                  console.log("🚫 Image deletion disabled");
+                  return true; // Prevent deletion
+                }
+                return false;
+              },
+            };
+          },
+          addNodeView() {
+            return ({ node, HTMLAttributes }) => {
+              const img = document.createElement("img");
+              Object.entries(HTMLAttributes).forEach(([key, value]) => {
+                img.setAttribute(key, value);
+              });
+
+              // Make image non-selectable and non-deletable
+              img.style.userSelect = "none";
+              img.style.pointerEvents = "none";
+              img.draggable = false;
+
+              // Add visual indicator that image is protected
+              img.style.border = "2px solid #e2e8f0";
+              img.style.borderRadius = "4px";
+              img.title = "Image is protected from editing";
+
+              return {
+                dom: img,
+                contentDOM: null,
+                selectNode: () => {
+                  console.log("🚫 Image selection disabled");
+                },
+                deselectNode: () => {},
+                destroy: () => {},
+              };
             };
           },
         }).configure({
@@ -366,13 +406,13 @@ export class TipTapEditor {
     const otherButtons = [
       {
         name: "blockquote",
-        icon: '"',
+        icon: "🧾",
         title: "Blockquote",
         command: () => this.editor.chain().focus().toggleBlockquote().run(),
       },
       {
         name: "codeBlock",
-        icon: "</>",
+        icon: "⌨",
         title: "Code Block",
         command: () => this.editor.chain().focus().toggleCodeBlock().run(),
       },
@@ -412,29 +452,12 @@ export class TipTapEditor {
       btn.innerHTML = button.icon;
       btn.title = button.title;
       btn.type = "button";
-      btn.style.cssText = `
-        padding: 6px 10px;
-        border: 1px solid #d1d5db;
-        background: white;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-        font-weight: bold;
-        transition: all 0.2s;
-      `;
+      // Button styles handled by CSS file
 
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         button.command();
         this.updateToolbarState();
-      });
-
-      btn.addEventListener("mouseenter", () => {
-        btn.style.background = "#f3f4f6";
-      });
-
-      btn.addEventListener("mouseleave", () => {
-        btn.style.background = "white";
       });
 
       toolbar.appendChild(btn);
@@ -446,12 +469,7 @@ export class TipTapEditor {
    */
   createSeparator(toolbar) {
     const separator = document.createElement("div");
-    separator.style.cssText = `
-      width: 1px;
-      height: 24px;
-      background: #d1d5db;
-      margin: 0 4px;
-    `;
+    separator.className = "tiptap-toolbar-separator";
     toolbar.appendChild(separator);
   }
 
