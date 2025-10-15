@@ -1672,13 +1672,14 @@ ${cleanedDiagram}
     );
     if (!saveBtn) return;
 
+    // Keep consistent Save button appearance across all tabs
+    // Only change the title to indicate modification status
+    DOMHelpers.setContent(saveBtn, "💾 Save");
+    saveBtn.style.background = "#007bff"; // Always use primary blue color
+
     if (this.isModified) {
-      DOMHelpers.setContent(saveBtn, "💾 Save *");
-      saveBtn.style.background = "#28a745";
-      saveBtn.title = "Có thay đổi chưa lưu";
+      saveBtn.title = "Có thay đổi chưa lưu - Click để lưu";
     } else {
-      DOMHelpers.setContent(saveBtn, "💾 Save");
-      saveBtn.style.background = "#007bff";
       saveBtn.title = "Save";
     }
   }
