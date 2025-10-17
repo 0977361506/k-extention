@@ -1550,34 +1550,57 @@ ${cleanedDiagram}
   // Save current content to draft (for auto-save)
   saveToLocalStorage() {
     try {
-      // Get current content from active editor
+      // Load existing draft first (may contain Mermaid changes)
+      let draftContent = this.storageManager.loadFromDraft();
+
+      // Get current content from active editor (Rich Text tab)
       const currentEditorContent = this.getCurrentEditorContent();
 
-      if (currentEditorContent) {
-        // Load existing draft or backup content
-        let draftContent = this.storageManager.loadFromDraft();
-        if (!draftContent) {
-          draftContent =
-            this.storageManager.loadFromLocalStorage() ||
-            this.currentContent ||
-            {};
-        }
+      if (draftContent) {
+        // If draft exists, use it as base (contains Mermaid changes)
+        // Only update with Rich Text editor content if we're on Rich Text tab
+        const activeTab = document.querySelector(
+          ".confluence-editor-tab.active"
+        );
+        const isRichTextTabActive =
+          activeTab && activeTab.id === "rich-text-tab";
 
-        // Update draft with latest editor content
+        if (isRichTextTabActive && currentEditorContent) {
+          // Update draft with latest Rich Text editor content
+          draftContent.full_storage_format = currentEditorContent;
+          draftContent.content = currentEditorContent;
+          console.log("📝 Updated draft with Rich Text editor content");
+        } else {
+          console.log(
+            "📝 Using existing draft content (contains Mermaid changes)"
+          );
+        }
+      } else if (currentEditorContent) {
+        // No draft exists, create new one from Rich Text editor
+        draftContent =
+          this.storageManager.loadFromLocalStorage() ||
+          this.currentContent ||
+          {};
+
         draftContent.full_storage_format = currentEditorContent;
         draftContent.content = currentEditorContent;
-
-        // Save to draft
-        this.storageManager.saveToDraft(draftContent);
-
-        // Update currentContent to match draft
-        this.currentContent = draftContent;
-
-        console.log("✅ Content auto-saved to draft:", {
-          contentLength: currentEditorContent.length,
-          timestamp: new Date().toLocaleTimeString(),
-        });
+        console.log("📝 Created new draft from Rich Text editor content");
+      } else {
+        // No content available
+        console.warn("⚠️ No content available to save");
+        return;
       }
+
+      // Save to draft
+      this.storageManager.saveToDraft(draftContent);
+
+      // Update currentContent to match draft
+      this.currentContent = draftContent;
+
+      console.log("✅ Content auto-saved to draft:", {
+        contentLength: draftContent.full_storage_format?.length || 0,
+        timestamp: new Date().toLocaleTimeString(),
+      });
     } catch (error) {
       console.error("❌ Failed to auto-save to draft:", error);
     }
