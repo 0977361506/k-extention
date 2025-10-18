@@ -1,5 +1,6 @@
 // Text Edit AI Service for K-Tool Extension
 import { API_URLS } from "../../shared/constants.js";
+import { ConfluenceApi } from "../../shared/api.js";
 
 export class TextEditAI {
   constructor() {
@@ -1012,6 +1013,9 @@ export class TextEditAI {
     });
 
     try {
+      // Get current page content from Confluence
+      const pageContent = await this.getCurrentPageContent();
+
       const response = await fetch(API_URLS.EDIT_HTML_CONTENT, {
         method: "POST",
         headers: {
@@ -1021,6 +1025,7 @@ export class TextEditAI {
           html_content: htmlContent,
           selected_text: selectedText,
           prompt: prompt,
+          page_content: pageContent, // Add page content field
         }),
       });
 
@@ -1376,5 +1381,141 @@ export class TextEditAI {
     dragHandle.addEventListener("mousedown", startDrag);
 
     console.log("✅ DRAG: Setup completed");
+  }
+
+  /**
+   * Get current page content using Confluence API
+   * @returns {Promise<string>} Raw HTML content of the current page
+   */
+  async getCurrentPageContent() {
+    try {
+      // Extract page ID from current URL
+      const pageId = this.extractPageId();
+
+      if (!pageId) {
+        console.warn(
+          "⚠️ Could not extract page ID, falling back to DOM content"
+        );
+        return this.getFallbackContent();
+      }
+
+      console.log("🔍 Fetching page content from API for pageId:", pageId);
+
+      // Use existing ConfluenceApi to fetch page content
+      const pageData = await ConfluenceApi.fetchPageContent(pageId);
+
+      if (pageData && pageData.content) {
+        console.log(
+          "📄 Page content fetched from API:",
+          pageData.content.substring(0, 100) + "..."
+        );
+        return pageData.content; // This is the HTML view content
+      }
+
+      // Fallback to storage format if view content not available
+      if (pageData && pageData.storageFormat) {
+        console.log(
+          "📄 Using storage format as fallback:",
+          pageData.storageFormat.substring(0, 100) + "..."
+        );
+        return pageData.storageFormat;
+      }
+
+      console.warn("⚠️ No content found from API, falling back to DOM");
+      return this.getFallbackContent();
+    } catch (error) {
+      console.error("❌ Error fetching page content from API:", error);
+      console.log("🔄 Falling back to DOM content extraction");
+      return this.getFallbackContent();
+    }
+  }
+
+  /**
+   * Extract page ID from current URL
+   * @returns {string|null} Page ID or null if not found
+   */
+  extractPageId() {
+    try {
+      // Method 1: From URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const pageIdFromParams = urlParams.get("pageId");
+      if (pageIdFromParams) {
+        return pageIdFromParams;
+      }
+
+      // Method 2: From URL path patterns
+      const pathPatterns = [
+        /\/pages\/(\d+)/,
+        /\/display\/[^\/]+\/.*\?pageId=(\d+)/,
+        /pageId=(\d+)/,
+      ];
+
+      for (const pattern of pathPatterns) {
+        const match = window.location.href.match(pattern);
+        if (match && match[1]) {
+          return match[1];
+        }
+      }
+
+      // Method 3: From meta tags
+      const metaSelectors = [
+        'meta[name="ajs-page-id"]',
+        'meta[name="confluence-page-id"]',
+        'meta[property="confluence:page-id"]',
+      ];
+
+      for (const selector of metaSelectors) {
+        const metaTag = document.querySelector(selector);
+        if (metaTag && metaTag.content) {
+          return metaTag.content;
+        }
+      }
+
+      // Method 4: From AJS context if available
+      if (window.AJS && window.AJS.params && window.AJS.params.pageId) {
+        return window.AJS.params.pageId;
+      }
+
+      return null;
+    } catch (error) {
+      console.error("❌ Error extracting page ID:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Fallback method to get content from DOM
+   * @returns {string} HTML content from DOM
+   */
+  getFallbackContent() {
+    try {
+      const contentSelectors = [
+        "#main-content .wiki-content",
+        ".wiki-content",
+        "#content .page-content",
+        ".page-content",
+        "#main-content",
+        ".main-content",
+      ];
+
+      for (const selector of contentSelectors) {
+        const element = document.querySelector(selector);
+        if (element) {
+          const content = element.innerHTML;
+          if (content && content.trim().length > 0) {
+            console.log(
+              `📄 Found fallback content from selector "${selector}"`
+            );
+            return content;
+          }
+        }
+      }
+
+      // Last resort: body content
+      return document.body.innerHTML;
+    } catch (error) {
+      console.error("❌ Error getting fallback content:", error);
+      return "";
+    }
   }
 }

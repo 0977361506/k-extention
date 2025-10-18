@@ -8,7 +8,7 @@ const isLocal =
   window.location.hostname.includes("localhost");
 const rootUrl = isLocal
   ? "http://localhost:5001"
-  : "https://gendoc.thangnotes.dev";
+  : "https://document.thangnotes.dev";
 
 // Confluence API URLs (always localhost:8090 for Confluence)
 const confluenceBaseUrl = "http://localhost:8090";
