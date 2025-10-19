@@ -14,7 +14,8 @@
     "http://localhost:5001/*",
     "https://gendoc.thangnotes.dev/*",
     "https://*.atlassian.net/*",
-    "https://*.confluence.com/*"
+    "https://*.confluence.com/*",
+    "https://confluence.mbbank.com.vn/*"
   ],
   "icons": {
     "16": "assets/icon.png",
@@ -30,7 +31,8 @@
       "matches": [
         "http://localhost:8090/*",
         "https://*.atlassian.net/*",
-        "https://*.confluence.com/*"
+        "https://*.confluence.com/*",
+        "https://confluence.mbbank.com.vn/*"
       ],
       "js": ["lib/mermaid.min.js", "tiptap.js", "content.js"],
       "css": ["content.css", "mermaidAIChat.css"],

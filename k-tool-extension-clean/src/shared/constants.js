@@ -11,7 +11,9 @@ const rootUrl = isLocal
   : "https://document.thangnotes.dev";
 
 // Confluence API URLs (always localhost:8090 for Confluence)
-const confluenceBaseUrl = "http://localhost:8090";
+const confluenceBaseUrl = isLocal
+  ? "http://localhost:8090"
+  : "https://confluence.mbbank.com.vn";
 
 export const API_URLS = {
   GEN_DOC: `${rootUrl}/api/generate-full-confluence-doc`,
