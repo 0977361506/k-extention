@@ -678,23 +678,25 @@ class KToolContent {
     const originalText = createBtn.innerHTML;
     const originalDisabled = createBtn.disabled;
 
+    // Declare variables outside try-catch so they're accessible in both blocks
+    let spaceKey, title, parentId;
+
+    const backupContent = this.storageManager.loadFromLocalStorage();
+    let content = backupContent?.full_storage_format || backupContent?.content;
     try {
       // Set loading state
       createBtn.innerHTML = "⏳ Creating Page...";
       createBtn.disabled = true;
       createBtn.style.opacity = "0.7";
 
-      const spaceKey = ConfluenceApi.getCurrentSpaceKey();
+      spaceKey = ConfluenceApi.getCurrentSpaceKey();
       if (!spaceKey) {
         throw new Error("Cannot determine space key of current page");
       }
 
-      const title = `K-Tool Generated Document - ${new Date().toLocaleDateString()}`;
+      title = `K-Tool Generated Document - ${new Date().toLocaleDateString()}`;
 
       // Use backup content from localStorage (committed changes)
-      const backupContent = this.storageManager.loadFromLocalStorage();
-      let content =
-        backupContent?.full_storage_format || backupContent?.content;
 
       // Fallback to generated content if no backup
       if (!content) {
@@ -708,10 +710,10 @@ class KToolContent {
       console.warn("Content after replace:", content?.substring(0, 500));
 
       // 🔄 Convert HTML to XHTML using BeautifulSoup API before creating page
-      createBtn.innerHTML = "🔄 Converting to XHTML...";
-      content = this.normalizeConfluenceHtml(content);
+      // createBtn.innerHTML = "🔄 Converting to XHTML...";
+      // content = this.normalizeConfluenceHtml(content);
       // Extract parent page ID from settings if available
-      let parentId = null;
+      parentId = null;
       if (this.settings.documentUrl) {
         parentId = ConfluenceApi.extractPageId(this.settings.documentUrl);
       }
@@ -736,7 +738,73 @@ class KToolContent {
     } catch (error) {
       console.error("❌ Create page error:", error);
 
-      // Error state
+      // Check if error is related to XHTML parsing
+      const errorMessage = error.message || "";
+      const isXhtmlError =
+        errorMessage.toLowerCase().includes("error parsing xhtml") ||
+        errorMessage.toLowerCase().includes("parsing error") ||
+        errorMessage.toLowerCase().includes("invalid xhtml") ||
+        errorMessage.toLowerCase().includes("malformed");
+
+      if (isXhtmlError) {
+        console.log("🔧 Detected XHTML parsing error, attempting to fix...");
+
+        try {
+          // Update button to show fixing state
+          createBtn.innerHTML = "🔧 Fixing XHTML...";
+
+          // Ensure we have content to fix
+          if (!content) {
+            console.error("❌ No content available to fix");
+            throw new Error("No content available to fix XHTML");
+          }
+          const fixResult = await ApiClient.fixXhtml(content, errorMessage);
+
+          if (fixResult.success && fixResult.data.fixed_xhtml) {
+            console.log(
+              "✅ XHTML fixed successfully, retrying page creation..."
+            );
+
+            // Update button to show retry state
+            createBtn.innerHTML = "🔄 Retrying Page Creation...";
+
+            // Retry page creation with fixed content
+            await ConfluenceApi.createPage(
+              title,
+              fixResult.data.fixed_xhtml,
+              spaceKey,
+              parentId
+            );
+
+            // Success state
+            createBtn.innerHTML = "✅ Page Created Successfully!";
+            createBtn.style.background = "#28a745";
+
+            this.showNotification(
+              "Page created successfully after fixing XHTML!",
+              "success"
+            );
+
+            // Delay 1s before restore button
+            setTimeout(() => {
+              createBtn.innerHTML = originalText;
+              createBtn.disabled = originalDisabled;
+              createBtn.style.opacity = "1";
+              createBtn.style.background = "";
+            }, 1000);
+
+            return; // Exit successfully
+          } else {
+            console.error("❌ Failed to fix XHTML:", fixResult.error);
+            throw new Error(`Failed to fix XHTML: ${fixResult.error}`);
+          }
+        } catch (fixError) {
+          console.error("❌ XHTML fix attempt failed:", fixError);
+          // Fall through to original error handling
+        }
+      }
+
+      // Original error handling (for non-XHTML errors or failed fix attempts)
       createBtn.innerHTML = "❌ Creation Failed";
       createBtn.style.background = "#dc3545";
 

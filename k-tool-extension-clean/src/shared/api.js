@@ -111,6 +111,47 @@ export class ApiClient {
       };
     }
   }
+
+  /**
+   * Fix invalid XHTML content using AI
+   * @param {string} xhtmlContent - Invalid XHTML content to fix
+   * @param {string} errorDetails - Error details from parser
+   * @param {string} model - AI model to use (optional)
+   * @returns {Promise<Object>} Fixed XHTML response
+   */
+  static async fixXhtml(xhtmlContent, errorDetails, model = "gpt-4o-mini") {
+    console.log("🔧 Fixing XHTML content...");
+    console.log("📄 XHTML content length:", xhtmlContent?.length || 0);
+    console.log("❌ Error details:", errorDetails);
+    console.log("🔗 API URL:", API_URLS.FIX_XHTML);
+
+    try {
+      const result = await this.request(API_URLS.FIX_XHTML, {
+        method: "POST",
+        body: JSON.stringify({
+          xhtml_content: xhtmlContent,
+          error_details: errorDetails,
+          model: model,
+        }),
+      });
+
+      console.log("✅ XHTML fix result:", result);
+      return result;
+    } catch (error) {
+      console.error("❌ XHTML fix error:", error);
+      console.error("❌ Error details:", {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      });
+
+      // Return error in expected format
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
 }
 
 /**
@@ -740,12 +781,9 @@ export class ConfluenceApi {
       processedContent = this.convertToMermaidCloudMacros(processedContent);
 
       const finalContent = processedContent;
-      console.log("✅ Content processing complete");
-      console.log("📄 Final content length:", finalContent.length);
-      console.log("📄 Final content preview (first 200 chars):");
-      console.log(finalContent.substring(0, 200));
+      console.warn("✅ Content processing complete", finalContent);
 
-      // Create the page payload with clean title
+      // Step 4: Create page payload
       const createPayload = {
         type: "page",
         title: cleanTitle.trim() + "-" + Date.now(), // Use clean title with timestamp
